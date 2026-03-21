@@ -1,142 +1,325 @@
 const router = require("express").Router();
+
 const bcrypt = require("bcryptjs");
+
 const jwt = require("jsonwebtoken");
+
+const multer = require("multer");
+
 const User = require("../models/User");
+
+const auth = require("../middleware/auth");
+
+
+
+/* FILE STORAGE FOR PROFILE PHOTO */
+
+const storage = multer.diskStorage({
+
+ destination:(req,file,cb)=>{
+
+  cb(null,"uploads/");
+
+ },
+
+ filename:(req,file,cb)=>{
+
+  cb(null,Date.now()+"-"+file.originalname);
+
+ }
+
+});
+
+
+
+const upload = multer({storage});
+
 
 
 /* REGISTER USER */
+
 router.post("/register", async (req,res)=>{
 
-  try {
+ try{
 
-    const { username, fullName, email, password, college, branch, year, role } = req.body;
+  const {
 
-    // check duplicate email
-    const existingUser = await User.findOne({ email });
+   username,
 
-    if (existingUser) {
+   fullName,
 
-      return res.status(400).send("Email already registered");
+   email,
 
-    }
+   password,
 
-    // hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+   college,
 
-    // default role = student
-    const newUser = new User({
+   branch,
 
-      username,
-      fullName,
-      email,
-      password: hashedPassword,
-      college,
-      branch,
-      year,
-      role: role || "student"
+   year
 
-    });
+  } = req.body;
 
-    await newUser.save();
 
-    res.status(201).send("Registered Successfully");
 
-  }
+  // check existing email
 
-  catch (err) {
+  const existingUser = await User.findOne({email});
 
-    console.log("Register error:", err);
 
-    res.status(500).send("Server Error");
+
+  if(existingUser){
+
+   return res.status(400)
+
+   .send("Email already registered");
 
   }
+
+
+
+  // hash password
+
+  const hashedPassword = await bcrypt.hash(
+
+   password,
+
+   10
+
+  );
+
+
+
+  const newUser = new User({
+
+   username,
+
+   fullName,
+
+   email,
+
+   password:hashedPassword,
+
+   college,
+
+   branch,
+
+   year,
+
+   role:"student"
+
+  });
+
+
+
+  await newUser.save();
+
+
+
+  res.status(201)
+
+  .send("Registered Successfully");
+
+ }
+
+ catch(err){
+
+  console.log(err);
+
+  res.status(500)
+
+  .send("Server Error");
+
+ }
 
 });
 
 
 
-/* LOGIN USER */
-router.post("/login", async (req, res) => {
+/* LOGIN */
 
-  try {
+router.post("/login", async (req,res)=>{
 
-    const { email, password } = req.body;
+ try{
 
-    // find user
-    const user = await User.findOne({ email });
+  const {
 
-    if (!user) {
+   email,
 
-      return res.status(400).send("User not found");
+   password
 
-    }
+  } = req.body;
 
-    // check password
-    const validPassword = await bcrypt.compare(password, user.password);
 
-    if (!validPassword) {
 
-      return res.status(400).send("Wrong password");
+  const user = await User.findOne({
 
-    }
+   email
 
-    // create token with user info
-    const token = jwt.sign(
+  });
 
-      {
 
-        id: user._id,
-        email: user.email,
-        username: user.username,
-        role: user.role
 
-      },
+  if(!user){
 
-      process.env.JWT_SECRET,
+   return res.status(400)
 
-      { expiresIn: "1d" }
-
-    );
-
-    res.json({
-
-      token,
-      role: user.role,
-      username: user.username,
-      email: user.email
-
-    });
+   .send("User not found");
 
   }
 
-  catch (err) {
 
-    console.log("Login error:", err);
 
-    res.status(500).send("Server error");
+  const validPassword = await bcrypt.compare(
+
+   password,
+
+   user.password
+
+  );
+
+
+
+  if(!validPassword){
+
+   return res.status(400)
+
+   .send("Wrong password");
 
   }
+
+
+
+  const token = jwt.sign(
+
+   {
+
+    id:user._id,
+
+    email:user.email,
+
+    username:user.username,
+
+    role:user.role
+
+   },
+
+   process.env.JWT_SECRET,
+
+   {
+
+    expiresIn:"1d"
+
+   }
+
+  );
+
+
+
+  res.json({
+
+   token,
+
+   role:user.role,
+
+   username:user.username,
+
+   email:user.email
+
+  });
+
+ }
+
+ catch(err){
+
+  console.log(err);
+
+  res.status(500)
+
+  .send("Server error");
+
+ }
 
 });
+
+
+
+/* GET LOGGED USER PROFILE */
+
+router.get("/me", auth, async (req,res)=>{
+
+ try{
+
+  const user = await User.findById(
+
+   req.user.id
+
+  )
+
+  .select("-password");
+
+
+
+  res.json(user);
+
+ }
+
+ catch(err){
+
+  res.status(500)
+
+  .json(err);
+
+ }
+
+});
+
+
+
+/* UPLOAD PROFILE PHOTO */
+
+router.put(
+
+ "/upload-photo",
+
+ auth,
+
+ upload.single("file"),
+
+ async(req,res)=>{
+
+  try{
+
+   const user = await User.findByIdAndUpdate(
+
+    req.user.id,
+
+    {
+
+     profilePic:req.file.filename
+
+    },
+
+    {new:true}
+
+   );
+
+
+
+   res.json(user);
+
+  }
+
+  catch(err){
+
+   res.status(500)
+
+   .json(err);
+
+  }
+
+ });
+
 
 
 module.exports = router;
-router.get("/me", async (req, res) => {
-
-  try {
-
-    const token = req.headers.authorization.split(" ")[1];
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decoded.id).select("-password");
-
-    res.json(user);
-
-  } catch (err) {
-
-    res.status(401).json("Invalid token");
-
-  }
-
-});

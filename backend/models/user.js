@@ -23,17 +23,13 @@ const UserSchema = new mongoose.Schema({
   required:true
  },
 
- college:{
-  type:String
- },
+ college:String,
 
- branch:{
-  type:String
- },
+ branch:String,
 
- year:{
-  type:String
- },
+ year:String,
+
+ profilePic:String,
 
  role:{
   type:String,

@@ -239,3 +239,103 @@ router.put("/unpin/:id", auth, async (req,res)=>{
 
 
 module.exports = router;
+router.get("/myposts", auth, async (req,res)=>{
+
+ try{
+
+  const posts = await Post.find({
+
+   userId:req.user.id
+
+  })
+
+  .sort({
+
+   createdAt:-1
+
+  });
+
+
+
+  res.json(posts);
+
+ }
+
+ catch(err){
+
+  res.status(500).json(err);
+
+ }
+
+});
+/* EDIT POST */
+
+router.put("/:id", auth, async(req,res)=>{
+
+ try{
+
+  const post = await Post.findOneAndUpdate(
+
+   {
+
+    _id:req.params.id,
+
+    userId:req.user.id
+
+   },
+
+   {
+
+    title:req.body.title,
+
+    content:req.body.content
+
+   },
+
+   {new:true}
+
+  );
+
+
+
+  res.json(post);
+
+ }
+
+ catch(err){
+
+  res.status(500).json(err);
+
+ }
+
+});
+
+
+
+/* USER DELETE OWN POST */
+
+router.delete("/user/:id", auth, async(req,res)=>{
+
+ try{
+
+  await Post.deleteOne({
+
+   _id:req.params.id,
+
+   userId:req.user.id
+
+  });
+
+
+
+  res.json("deleted");
+
+ }
+
+ catch(err){
+
+  res.status(500).json(err);
+
+ }
+
+});
