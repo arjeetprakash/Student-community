@@ -5,17 +5,11 @@ const User = require("../models/User");
 
 
 /* REGISTER USER */
-router.post("/register", async (req, res) => {
+router.post("/register", async (req,res)=>{
 
   try {
 
-    const { username, email, password, role } = req.body;
-
-    if (!username || !email || !password) {
-
-      return res.status(400).send("All fields required");
-
-    }
+    const { username, fullName, email, password, college, branch, year, role } = req.body;
 
     // check duplicate email
     const existingUser = await User.findOne({ email });
@@ -33,8 +27,12 @@ router.post("/register", async (req, res) => {
     const newUser = new User({
 
       username,
+      fullName,
       email,
       password: hashedPassword,
+      college,
+      branch,
+      year,
       role: role || "student"
 
     });
