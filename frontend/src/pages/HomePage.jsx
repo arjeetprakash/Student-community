@@ -1,49 +1,39 @@
-import { Link } from "react-router-dom";
+import axios from "axios";
+import { useEffect, useState } from "react";
+import Navbar from "../components/Navbar";
 
 export default function HomePage() {
+
+  const [notices, setNotices] = useState([]);
+  const role = localStorage.getItem("role");
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/notice")
+      .then(res => setNotices(res.data))
+      .catch(()=>setNotices([]));
+  }, []);
+
   return (
-    <h1 style={{ color: "red" }}>HOME PAGE LOADED 🚀</h1>
-  );
-}
-    <div>
+    <div className="app-shell">
 
-      {/* NAVBAR */}
-      <nav style={{background:"#000", padding:"10px"}}>
-        <h3 style={{color:"white"}}>🎓 StudentHub</h3>
+      <Navbar role={role} />
 
-        <Link to="/" style={{margin:"10px", color:"white"}}>Login</Link>
-        <Link to="/" style={{margin:"10px", color:"white"}}>Signup</Link>
-        <Link to="/admin" style={{margin:"10px", color:"white"}}>Admin</Link>
-      </nav>
-
-      {/* HERO */}
-      <div style={{
-        backgroundImage: "url('https://images.unsplash.com/photo-1523580494863-6f3031224c94')",
-        backgroundSize: "cover",
-        color: "white",
-        padding: "120px",
-        textAlign: "center"
-      }}>
-        <h1>Welcome to Student Community</h1>
-        <p>Connect • Learn • Grow</p>
+      <div className="hero">
+        <h1>Community Updates</h1>
+        <p>Latest announcements from admin</p>
       </div>
 
-      {/* FEATURES */}
-      <div style={{display:"flex", justifyContent:"center", marginTop:"40px"}}>
-        <div style={{margin:"20px"}}>
-          <h3>Forum</h3>
-          <p>Discuss & Learn</p>
-        </div>
-
-        <div style={{margin:"20px"}}>
-          <h3>Events</h3>
-          <p>Hackathons & Workshops</p>
-        </div>
-
-        <div style={{margin:"20px"}}>
-          <h3>Opportunities</h3>
-          <p>Jobs & Internships</p>
-        </div>
+      <div className="grid">
+        {notices.map(n => (
+          <div key={n._id} className="section-card">
+            <h3>{n.text}</h3>
+            <small>
+              {new Date(n.createdAt).toLocaleString()}
+            </small>
+          </div>
+        ))}
       </div>
 
     </div>
+  );
+}

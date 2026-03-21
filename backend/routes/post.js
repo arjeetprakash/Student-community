@@ -2,88 +2,240 @@ const express = require("express");
 const router = express.Router();
 
 const Post = require("../models/Post");
-const auth = require("../middleware/auth");   // correct middleware import
+const auth = require("../middleware/auth");
+
+const multer = require("multer");
+
+
+
+/* FILE UPLOAD SETUP */
+
+const storage = multer.diskStorage({
+
+ destination: function(req,file,cb){
+
+  cb(null,"uploads/");
+
+ },
+
+ filename: function(req,file,cb){
+
+  cb(null,Date.now()+"-"+file.originalname);
+
+ }
+
+});
+
+const upload = multer({storage});
 
 
 
 /* CREATE POST */
-router.post("/", auth, async (req, res) => {
 
-  try {
+router.post("/", auth, upload.single("file"), async (req,res)=>{
 
-    const post = new Post({
+ try{
 
-      userId: req.user.id,
+  const post = new Post({
 
-      title: req.body.title,
-      content: req.body.content,
+   userId: req.user.id,
 
-      author: req.user.email,
-      role: req.user.role
+   title: req.body.title,
 
-    });
+   content: req.body.content,
 
-    await post.save();
+   author: req.user.email,
 
-    res.json(post);
+   role: req.user.role,
 
-  }
-  catch (err) {
+   file: req.file ? req.file.filename : null
 
-    console.log("Create post error", err);
-    res.status(500).send("Server error");
+  });
 
-  }
+  await post.save();
+
+  res.json(post);
+
+ }
+
+ catch(err){
+
+  console.log("Create post error",err);
+
+  res.status(500).send("Server error");
+
+ }
 
 });
 
 
 
 /* GET ALL POSTS */
-router.get("/", auth, async (req, res) => {
 
-  try {
+router.get("/", auth, async (req,res)=>{
 
-    const posts = await Post.find().sort({ createdAt: -1 });
+ try{
 
-    res.json(posts);
+  const posts = await Post.find()
 
-  }
-  catch (err) {
+  .sort({
 
-    console.log("Fetch post error", err);
-    res.status(500).send("Server error");
+   isPinned:-1,
 
-  }
+   createdAt:-1
+
+  });
+
+  res.json(posts);
+
+ }
+
+ catch(err){
+
+  console.log("Fetch post error",err);
+
+  res.status(500).send("Server error");
+
+ }
+
+});
+
+
+
+/* SOFT DELETE POST */
+
+router.delete("/:id", auth, async (req,res)=>{
+
+ try{
+
+  const post = await Post.findByIdAndUpdate(
+
+   req.params.id,
+
+   {
+
+    isDeleted:true,
+
+    deletedBy:"admin"
+
+   },
+
+   {new:true}
+
+  );
+
+  res.json(post);
+
+ }
+
+ catch(err){
+
+  console.log("Delete error",err);
+
+  res.status(500).send("Server error");
+
+ }
 
 });
 
 
 
-/* DELETE POST (ADMIN ONLY) */
-router.delete("/:id", auth, async (req, res) => {
+/* PIN POST WITH TIME */
 
-  try {
+router.put("/pin/:id", auth, async (req,res)=>{
 
-    if (req.user.role !== "admin") {
+ try{
 
-      return res.status(403).send("Admin only");
+  const hours = req.body.hours;
 
-    }
+  let expireTime = null;
 
-    await Post.findByIdAndDelete(req.params.id);
 
-    res.send("Post deleted");
+
+  if(hours){
+
+   expireTime = new Date(
+
+    Date.now() + hours*60*60*1000
+
+   );
 
   }
-  catch (err) {
 
-    console.log("Delete post error", err);
-    res.status(500).send("Server error");
 
-  }
+
+  const post = await Post.findByIdAndUpdate(
+
+   req.params.id,
+
+   {
+
+    isPinned:true,
+
+    pinnedUntil:expireTime
+
+   },
+
+   {new:true}
+
+  );
+
+
+
+  res.json(post);
+
+ }
+
+ catch(err){
+
+  console.log("Pin error",err);
+
+  res.status(500).send("Server error");
+
+ }
 
 });
+
+
+
+/* UNPIN POST */
+
+router.put("/unpin/:id", auth, async (req,res)=>{
+
+ try{
+
+  const post = await Post.findByIdAndUpdate(
+
+   req.params.id,
+
+   {
+
+    isPinned:false,
+
+    pinnedUntil:null
+
+   },
+
+   {new:true}
+
+  );
+
+
+
+  res.json(post);
+
+ }
+
+ catch(err){
+
+  console.log("Unpin error",err);
+
+  res.status(500).send("Server error");
+
+ }
+
+});
+
 
 
 module.exports = router;

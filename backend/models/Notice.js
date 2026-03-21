@@ -1,11 +1,27 @@
 const mongoose = require("mongoose");
 
 const NoticeSchema = new mongoose.Schema(
-  {
-    text: { type: String, required: true },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
-  },
-  { timestamps: true }
+
+{
+
+ text:{
+  type:String,
+  required:true
+ },
+
+ file:{
+  type:String
+ },
+
+ isPinned:{
+  type:Boolean,
+  default:false
+ }
+
+},
+
+{timestamps:true}
+
 );
 
-module.exports = mongoose.model("Notice", NoticeSchema);
+module.exports = mongoose.model("Notice",NoticeSchema);

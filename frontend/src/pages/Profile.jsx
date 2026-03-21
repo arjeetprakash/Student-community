@@ -1,31 +1,61 @@
+import axios from "axios";
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 
 export default function Profile() {
-  const [role, setRole] = useState(localStorage.getItem("role") || "student");
-  const [email, setEmail] = useState(localStorage.getItem("email") || "");
+
+  const [user, setUser] = useState({});
+  const role = localStorage.getItem("role");
 
   useEffect(() => {
+
     const token = localStorage.getItem("token");
+
     if (!token) {
       window.location = "/";
       return;
     }
-    setRole(localStorage.getItem("role") || "student");
-    setEmail(localStorage.getItem("email") || "");
+
+    axios.get("http://localhost:5000/api/auth/me", {
+
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+
+    })
+    .then(res => setUser(res.data))
+    .catch(err => console.log(err));
+
   }, []);
 
   return (
+
     <div className="app-shell">
+
       <Navbar role={role} />
+
       <div className="hero">
-        <h1>Profile</h1>
-        <p>Manage your account details</p>
+        <h1>My Profile</h1>
+        <p>Your account details</p>
       </div>
+
       <div className="section-card stack">
-        <div><strong>Email:</strong> {email}</div>
-        <div><strong>Role:</strong> {role}</div>
+
+        <div>
+          <strong>Name:</strong> {user.username || "Loading..."}
+        </div>
+
+        <div>
+          <strong>Email:</strong> {user.email || "Loading..."}
+        </div>
+
+        <div>
+          <strong>Role:</strong> {user.role || role}
+        </div>
+
       </div>
+
     </div>
+
   );
 }
