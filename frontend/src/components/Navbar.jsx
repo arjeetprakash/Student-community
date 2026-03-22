@@ -1,63 +1,92 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
-export default function Navbar({ role }) {
+export default function Navbar({ role }){
 
-  const logout = () => {
+ const [showMenu,setShowMenu] = useState(false);
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("email");
+ const logout = ()=>{
+  localStorage.clear();
+  window.location="/";
+ };
 
-    window.location = "/";
+ return(
 
-  };
+ <div className="navbar">
 
-  return (
+  <div className="nav-links">
 
-    <div className="navbar">
+   <strong>CampusConnect</strong>
 
-      <div className="nav-links">
+   <Link to="/home">Home</Link>
 
-        <strong>CampusConnect</strong>
+   <Link to="/home/notices">Notices</Link>
 
-        <Link to="/home">Home</Link>
+   <Link to="/home/search">Search</Link>
 
-        <Link to="/home/notices">Notices</Link>
+   {/* PROFILE DROPDOWN */}
 
-        <Link to="/profile">Profile</Link>
+   <div
+    style={{position:"relative"}}
+   >
 
-        {role === "admin" && (
+    <span
+     style={{cursor:"pointer"}}
+     onClick={()=>setShowMenu(!showMenu)}
+    >
+     Profile ▼
+    </span>
 
-          <Link to="/admin">Admin</Link>
+    {showMenu && (
 
-        )}
+     <div
+      style={{
+       position:"absolute",
+       top:"35px",
+       left:"0",
+       background:"#fff",
+       borderRadius:"8px",
+       padding:"8px",
+       boxShadow:"0 5px 15px rgba(0,0,0,0.1)",
+       display:"flex",
+       flexDirection:"column",
+       minWidth:"150px",
+       zIndex:1000
+      }}
+     >
 
-      </div>
+      <Link to="/home/profile">View Profile</Link>
 
-      <div className="nav-links">
+      <Link to="/home/profile/edit">Edit Profile</Link>
 
-        <div className="badge">
+     </div>
 
-          {role || "student"}
+    )}
 
-        </div>
+   </div>
 
-        <button
+   {role==="admin" && (
+    <Link to="/admin">Admin</Link>
+   )}
 
-          className="btn secondary"
+  </div>
 
-          onClick={logout}
+  <div className="nav-links">
 
-        >
+   <div className="badge">
+    {role}
+   </div>
 
-          Logout
+   <button
+    className="btn secondary"
+    onClick={logout}
+   >
+    Logout
+   </button>
 
-        </button>
+  </div>
 
-      </div>
+ </div>
 
-    </div>
-
-  );
-
+ );
 }

@@ -1,23 +1,45 @@
 require("dotenv").config();
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
 
-const app = express();
-app.use(express.json());
+const express=require("express");
+const mongoose=require("mongoose");
+const cors=require("cors");
+
+const app=express();
+
 app.use(cors());
-app.use("/uploads", express.static("uploads"));
+app.use(express.json());
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("DB Connected"))
-  .catch((err) => console.error("Mongo connection error", err));
 
-app.get("/", (req, res) => res.send("API running"));
+mongoose.connect(
 
-app.use("/api/auth", require("./routes/auth"));
-app.use("/api/post", require("./routes/post"));
-app.use("/api/notice", require("./routes/notice"));
+ process.env.MONGO_URI,
 
-const port = process.env.PORT || 5000;
-app.listen(port, () => console.log(`Server running on port ${port}`));
+ {
+
+  serverSelectionTimeoutMS:30000
+
+ }
+
+)
+
+.then(()=>console.log("DB Connected"))
+
+.catch(err=>console.log(err));
+
+
+app.use("/api/auth",require("./routes/auth"));
+app.use("/api/post",require("./routes/post"));
+app.use("/api/admin",require("./routes/admin"));
+app.use("/api/message",require("./routes/message"));
+app.use("/api/notice",require("./routes/notice"));
+app.use("/api/chat-request",require("./routes/chatRequest"));
+
+
+app.get("/",(req,res)=>res.send("API running"));
+
+
+app.listen(5000,()=>{
+
+ console.log("Server running on port 5000");
+
+});

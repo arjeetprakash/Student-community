@@ -1,18 +1,23 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect,useState } from "react";
 import Navbar from "../components/Navbar";
+import Pagination from "../components/Pagination";
 
 export default function Dashboard(){
 
- const [posts,setPosts] = useState([]);
- const [title,setTitle] = useState("");
- const [content,setContent] = useState("");
- const [file,setFile] = useState(null);
+ const [posts,setPosts]=useState([]);
+ const [title,setTitle]=useState("");
+ const [content,setContent]=useState("");
+ const [page,setPage]=useState(1);
+ const [comment,setComment]=useState({});
 
- const role = localStorage.getItem("role");
+ const postsPerPage=5;
+
+ const role=localStorage.getItem("role");
 
 
 
+ // LOAD POSTS
  useEffect(()=>{
 
   loadPosts();
@@ -21,97 +26,68 @@ export default function Dashboard(){
 
 
 
- // LOAD POSTS
+ const loadPosts=async()=>{
 
- const loadPosts = ()=>{
+  try{
 
-  const token = localStorage.getItem("token");
+   const res=await axios.get(
 
-  axios.get(
+    "http://localhost:5000/api/post"
 
-   "http://localhost:5000/api/post",
-
-   {
-
-    headers:{
-
-     Authorization:`Bearer ${token}`
-
-    }
-
-   }
-
-  )
-
-  .then(res=>{
+   );
 
    setPosts(res.data);
 
-  })
+  }
+  catch(err){
 
-  .catch(err=>console.log(err));
+   console.log("load error",err);
+
+  }
 
  };
 
 
 
  // CREATE POST
+ const createPost=async()=>{
 
- const createPost = async ()=>{
+  if(!title && !content) return;
 
   try{
 
-   const token = localStorage.getItem("token");
-
-   const formData = new FormData();
-
-   formData.append("title",title);
-
-   formData.append("content",content);
-
-   if(file){
-
-    formData.append("file",file);
-
-   }
-
-
+   const token=localStorage.getItem("token");
 
    await axios.post(
 
     "http://localhost:5000/api/post",
 
-    formData,
-
     {
 
+     title,
+     content,
+     author:localStorage.getItem("username"),
+     role:localStorage.getItem("role")
+
+    },
+
+    {
      headers:{
-
       Authorization:`Bearer ${token}`
-
      }
-
     }
 
    );
-
-
 
    setTitle("");
-
    setContent("");
 
-   setFile(null);
-
-
-
    loadPosts();
 
   }
-
   catch(err){
 
-   console.log("create error",err);
+   console.log("post error",err);
 
   }
 
@@ -119,137 +95,33 @@ export default function Dashboard(){
 
 
 
- // DELETE POST (soft delete)
-
- const deletePost = async(id)=>{
-
-  try{
-
-   const token = localStorage.getItem("token");
-
-
-
-   await axios.delete(
-
-    `http://localhost:5000/api/post/${id}`,
-
-    {
-
-     headers:{
-
-      Authorization:`Bearer ${token}`
-
-     }
-
-    }
-
-   );
-
-
-
-   loadPosts();
-
-  }
-
-  catch(err){
-
-   console.log("delete error",err);
-
-  }
-
- };
-
-
-
- // PIN POST
-
- const pinPost = async(id)=>{
+ // LIKE POST
+ const likePost=async(id)=>{
 
   try{
 
-   const hours = prompt(
-
-    "Pin duration in hours:\n1 = 1 hour\n2 = 2 hours\n24 = 1 day\nLeave empty = permanent"
-
-   );
-
-
-
-   const token = localStorage.getItem("token");
-
-
+   const token=localStorage.getItem("token");
 
    await axios.put(
 
-    `http://localhost:5000/api/post/pin/${id}`,
-
-    {hours},
-
-    {
-
-     headers:{
-
-      Authorization:`Bearer ${token}`
-
-     }
-
-    }
-
-   );
-
-
-
-   loadPosts();
-
-  }
-
-  catch(err){
-
-   console.log("pin error",err);
-
-  }
-
- };
-
-
-
- // UNPIN POST
-
- const unpinPost = async(id)=>{
-
-  try{
-
-   const token = localStorage.getItem("token");
-
-
-
-   await axios.put(
-
-    `http://localhost:5000/api/post/unpin/${id}`,
+    `http://localhost:5000/api/post/like/${id}`,
 
     {},
 
     {
-
      headers:{
-
       Authorization:`Bearer ${token}`
-
      }
-
     }
 
    );
 
-
-
    loadPosts();
 
   }
-
   catch(err){
 
-   console.log("unpin error",err);
+   console.log("like error",err);
 
   }
 
@@ -257,95 +129,223 @@ export default function Dashboard(){
 
 
 
- // REMOVE EXPIRED PIN FROM UI
+ // COMMENT POST
+ const commentPost=async(id)=>{
 
- const filteredPosts = posts.map(p=>{
+  if(!comment[id]) return;
 
-  if(p.pinnedUntil && new Date(p.pinnedUntil) < new Date()){
+  try{
 
-   p.isPinned = false;
+   const token=localStorage.getItem("token");
+
+   await axios.post(
+
+    `http://localhost:5000/api/post/comment/${id}`,
+
+    {
+     text:comment[id]
+    },
+
+    {
+     headers:{
+      Authorization:`Bearer ${token}`
+     }
+    }
+
+   );
+
+   setComment({
+
+    ...comment,
+    [id]:""
+
+   });
+
+   loadPosts();
+
+  }
+  catch(err){
+
+   console.log("comment error",err);
 
   }
 
-  return p;
-
- });
+ };
 
 
 
- // PINNED POSTS FIRST
+ // PIN ORDER
+ const orderedPosts=[
 
- const pinnedPosts = filteredPosts.filter(p=>p.isPinned);
+  ...posts.filter(p=>p.isPinned),
+  ...posts.filter(p=>!p.isPinned)
 
- const normalPosts = filteredPosts.filter(p=>!p.isPinned);
+ ];
 
 
 
- const orderedPosts = [...pinnedPosts,...normalPosts];
+ // PAGINATION
+ const lastIndex=page*postsPerPage;
+
+ const firstIndex=lastIndex-postsPerPage;
+
+ const currentPosts=orderedPosts.slice(
+
+  firstIndex,
+  lastIndex
+
+ );
 
 
 
  return(
 
-  <div className="app-shell">
+ <div className="app-shell">
 
-   <Navbar role={role}/>
-
-
-
-   <div className="hero">
-
-    <h1>Student Hub</h1>
-
-    <p>Share updates with your community</p>
-
-   </div>
+ <Navbar role={role}/>
 
 
 
-   {/* CREATE POST */}
+ <div className="hero">
 
-   <div className="section-card stack">
+  <h1>Student Hub</h1>
 
-    <h3>Create Post</h3>
+ </div>
 
 
+
+ {/* CREATE POST */}
+
+ <div className="section-card stack">
+
+  <input
+
+   className="input"
+
+   placeholder="title"
+
+   value={title}
+
+   onChange={e=>setTitle(e.target.value)}
+
+  />
+
+
+
+  <textarea
+
+   className="input"
+
+   placeholder="content"
+
+   value={content}
+
+   onChange={e=>setContent(e.target.value)}
+
+  />
+
+
+
+  <button
+
+   className="btn"
+
+   onClick={createPost}
+
+  >
+
+   Post
+
+  </button>
+
+ </div>
+
+
+
+ {/* POSTS */}
+
+ <div className="grid">
+
+ {
+
+  currentPosts.map(p=>(
+
+   <div
+
+    key={p._id}
+
+    className="section-card"
+
+   >
+
+    {p.isPinned && <div>📌 pinned</div>}
+
+
+
+    <h3>{p.title}</h3>
+
+    <p>{p.content}</p>
+
+
+
+    <small>
+
+     {p.author}
+
+    </small>
+
+
+
+    <small>
+
+     {
+
+      new Date(p.createdAt)
+
+      .toLocaleString()
+
+     }
+
+    </small>
+
+
+
+    {/* LIKE */}
+
+    <button
+
+     className="btn secondary"
+
+     onClick={()=>likePost(p._id)}
+
+    >
+
+     ❤️ {p.likes?.length || 0}
+
+    </button>
+
+
+
+    {/* COMMENT */}
 
     <input
 
      className="input"
 
-     placeholder="Title"
+     placeholder="write comment..."
 
-     value={title}
+     value={comment[p._id] || ""}
 
-     onChange={e=>setTitle(e.target.value)}
+     onChange={e=>
 
-    />
+      setComment({
 
+       ...comment,
+       [p._id]:e.target.value
 
+      })
 
-    <textarea
-
-     className="input"
-
-     rows={4}
-
-     placeholder="Content"
-
-     value={content}
-
-     onChange={e=>setContent(e.target.value)}
-
-    />
-
-
-
-    <input
-
-     type="file"
-
-     onChange={e=>setFile(e.target.files[0])}
+     }
 
     />
 
@@ -355,273 +355,57 @@ export default function Dashboard(){
 
      className="btn"
 
-     onClick={createPost}
+     onClick={()=>commentPost(p._id)}
 
     >
 
-     Post
+     Add Comment
 
     </button>
 
-   </div>
 
 
+    {/* COMMENTS */}
 
-   {/* POSTS */}
+    {
 
-   <div className="grid">
+     p.comments?.map(c=>(
 
-    {orderedPosts.map(p=>(
+      <div key={c._id}>
 
-     <div key={p._id} className="section-card">
-
-
-
-      {/* AUTHOR INFO */}
-
-      <div
-
-       style={{
-
-        display:"flex",
-
-        alignItems:"center",
-
-        marginBottom:"10px"
-
-       }}
-
-      >
-
-       <div
-
-        style={{
-
-         width:"40px",
-
-         height:"40px",
-
-         borderRadius:"50%",
-
-         background:"#2563eb",
-
-         color:"white",
-
-         display:"flex",
-
-         alignItems:"center",
-
-         justifyContent:"center",
-
-         fontWeight:"bold",
-
-         marginRight:"10px"
-
-        }}
-
-       >
-
-        {p.author?.charAt(0).toUpperCase()}
-
-       </div>
-
-
-
-       <div>
-
-        <strong>{p.author}</strong>
-
-        <div
-
-         style={{
-
-          fontSize:"12px",
-
-          color:"#475569"
-
-         }}
-
-        >
-
-         {p.role?.toUpperCase()}
-
-        </div>
-
-       </div>
+       💬 {c.text}
 
       </div>
 
+     ))
 
-
-      {/* PIN LABEL */}
-
-      {p.isPinned && (
-
-       <div
-
-        style={{
-
-         color:"#2563eb",
-
-         fontWeight:"bold",
-
-         marginBottom:"5px"
-
-        }}
-
-       >
-
-        📌 pinned post
-
-       </div>
-
-      )}
-
-
-
-      {/* CONTENT */}
-
-      {p.isDeleted ? (
-
-       <p style={{color:"red"}}>
-
-        This post was removed by admin
-
-       </p>
-
-      ):(
-
-       <>
-
-        <h3>{p.title}</h3>
-
-        <p>{p.content}</p>
-
-
-
-        {p.file && (
-
-         <a
-
-          href={`http://localhost:5000/uploads/${p.file}`}
-
-          target="_blank"
-
-         >
-
-          View attachment
-
-         </a>
-
-        )}
-
-       </>
-
-      )}
-
-
-
-      {/* TIME */}
-
-      <div
-
-       style={{
-
-        fontSize:"12px",
-
-        color:"#64748b",
-
-        marginTop:"5px"
-
-       }}
-
-      >
-
-       {
-
-        new Date(p.createdAt)
-
-        .toLocaleString()
-
-       }
-
-      </div>
-
-
-
-      {/* ADMIN CONTROLS */}
-
-      {role==="admin" && !p.isDeleted && (
-
-       <div style={{marginTop:"10px"}}>
-
-
-
-        <button
-
-         className="btn secondary"
-
-         onClick={()=>deletePost(p._id)}
-
-        >
-
-         Delete
-
-        </button>
-
-
-
-        {!p.isPinned ? (
-
-         <button
-
-          className="btn"
-
-          style={{marginLeft:"10px"}}
-
-          onClick={()=>pinPost(p._id)}
-
-         >
-
-          Pin
-
-         </button>
-
-        ):(
-
-         <button
-
-          className="btn"
-
-          style={{marginLeft:"10px"}}
-
-          onClick={()=>unpinPost(p._id)}
-
-         >
-
-          Unpin
-
-         </button>
-
-        )}
-
-
-
-       </div>
-
-      )}
-
-
-
-     </div>
-
-    ))}
+    }
 
    </div>
 
+  ))
+
+ }
+
+ </div>
 
 
-  </div>
+
+ <Pagination
+
+  totalItems={orderedPosts.length}
+
+  itemsPerPage={postsPerPage}
+
+  currentPage={page}
+
+  setCurrentPage={setPage}
+
+ />
+
+
+
+ </div>
 
  );
 

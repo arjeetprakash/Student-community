@@ -1,45 +1,59 @@
 const mongoose = require("mongoose");
 
+const CommentSchema = new mongoose.Schema({
+
+ userId:{
+  type:mongoose.Schema.Types.ObjectId,
+  ref:"User"
+ },
+
+ text:{
+  type:String,
+  required:true
+ },
+
+ createdAt:{
+  type:Date,
+  default:Date.now
+ }
+
+});
+
 const PostSchema = new mongoose.Schema({
 
  userId:{
   type:mongoose.Schema.Types.ObjectId,
-  ref:"User",
-  required:true
+  ref:"User"
  },
 
  title:{
-  type:String,
-  required:true
+  type:String
  },
 
  content:{
-  type:String,
-  required:true
+  type:String
  },
 
  author:{
-  type:String,
-  required:true
+  type:String
  },
 
  role:{
-  type:String,
-  required:true
+  type:String
  },
 
  file:{
   type:String
  },
 
- isDeleted:{
-  type:Boolean,
-  default:false
- },
+ likes:[
+  {
+   type:mongoose.Schema.Types.ObjectId,
+   ref:"User"
+  }
+ ],
 
- deletedBy:{
-  type:String
- },
+ comments:[CommentSchema],
 
  isPinned:{
   type:Boolean,
@@ -48,8 +62,15 @@ const PostSchema = new mongoose.Schema({
 
  pinnedUntil:{
   type:Date
+ },
+
+ isDeleted:{
+  type:Boolean,
+  default:false
  }
 
-},{timestamps:true});
+},
+{timestamps:true}
+);
 
 module.exports = mongoose.model("Post",PostSchema);

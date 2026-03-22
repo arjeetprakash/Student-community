@@ -1,26 +1,60 @@
 import axios from "axios";
-
-import { useState,useEffect } from "react";
-
+import { useEffect,useState } from "react";
 import Navbar from "../components/Navbar";
-
-
 
 export default function Admin(){
 
- const [notice,setNotice]=useState("");
+ const role = localStorage.getItem("role");
 
- const [file,setFile]=useState(null);
+ const [users,setUsers] = useState([]);
 
- const [pinned,setPinned]=useState(false);
+ const [search,setSearch] = useState("");
 
- const [notices,setNotices]=useState([]);
+ const [branch,setBranch] = useState("");
 
- const role=localStorage.getItem("role");
+ const [year,setYear] = useState("");
+
+ const [selectedUser,setSelectedUser] = useState(null);
+
+ const [message,setMessage] = useState("");
+
+ const [notice,setNotice] = useState("");
+
+ const [notices,setNotices] = useState([]);
+
+ const [page,setPage] = useState(1);
+
+ const usersPerPage = 6;
 
 
 
  useEffect(()=>{
+
+  const token = localStorage.getItem("token");
+
+
+
+  if(!token){
+
+   window.location="/";
+
+   return;
+
+  }
+
+
+
+  if(role !== "admin"){
+
+   window.location="/home";
+
+   return;
+
+  }
+
+
+
+  loadUsers();
 
   loadNotices();
 
@@ -28,29 +62,133 @@ export default function Admin(){
 
 
 
- const loadNotices=()=>{
+ /* LOAD USERS */
 
-  axios.get("http://localhost:5000/api/notice")
+ const loadUsers = ()=>{
 
+  const token = localStorage.getItem("token");
+
+
+
+  axios.get(
+
+   "http://localhost:5000/api/admin/users",
+
+   {
+
+    headers:{Authorization:`Bearer ${token}`}
+
+   }
+
+  )
+  .then(res=>setUsers(res.data));
+
+ };
+
+
+
+ /* FILTER */
+
+ const filteredUsers = users.filter(u=>{
+
+  return(
+
+   (branch ? u.branch===branch : true) &&
+
+   (year ? u.year===year : true) &&
+
+   (search ?
+
+    u.fullName.toLowerCase().includes(search.toLowerCase())
+
+    : true)
+
+  );
+
+ });
+
+
+
+ /* PAGINATION */
+
+ const lastIndex = page * usersPerPage;
+
+ const firstIndex = lastIndex - usersPerPage;
+
+ const currentUsers = filteredUsers.slice(
+
+  firstIndex,
+
+  lastIndex
+
+ );
+
+
+
+ const totalPages = Math.ceil(
+
+  filteredUsers.length / usersPerPage
+
+ );
+
+
+
+ /* MESSAGE */
+
+ const sendMessage = async ()=>{
+
+  const token = localStorage.getItem("token");
+
+
+
+  await axios.post(
+
+   "http://localhost:5000/api/message/send",
+
+   {
+
+    receiverId:selectedUser._id,
+
+    text:message
+
+   },
+
+   {
+
+    headers:{Authorization:`Bearer ${token}`}
+
+   }
+
+  );
+
+
+
+  setMessage("");
+
+  alert("message sent");
+
+ };
+
+
+
+ /* NOTICE */
+
+ const loadNotices = ()=>{
+
+  axios.get(
+
+   "http://localhost:5000/api/notice"
+
+  )
   .then(res=>setNotices(res.data));
 
  };
 
 
 
- const addNotice=async()=>{
+ const addNotice = async ()=>{
 
-  const token=localStorage.getItem("token");
-
-
-
-  const formData=new FormData();
-
-  formData.append("text",notice);
-
-  formData.append("file",file);
-
-  formData.append("isPinned",pinned);
+  const token = localStorage.getItem("token");
 
 
 
@@ -58,15 +196,15 @@ export default function Admin(){
 
    "http://localhost:5000/api/notice",
 
-   formData,
+   {
+
+    text:notice
+
+   },
 
    {
 
-    headers:{
-
-     Authorization:`Bearer ${token}`
-
-    }
+    headers:{Authorization:`Bearer ${token}`}
 
    }
 
@@ -76,12 +214,6 @@ export default function Admin(){
 
   setNotice("");
 
-  setFile(null);
-
-  setPinned(false);
-
-
-
   loadNotices();
 
  };
@@ -90,173 +222,407 @@ export default function Admin(){
 
  return(
 
-  <div className="app-shell">
+ <div className="app-shell">
 
-   <Navbar role={role}/>
+ <Navbar role={role}/>
 
 
 
-   <div className="section-card stack">
+ <div className="hero">
 
-    <h2>create notice</h2>
+  <h1>Admin Dashboard</h1>
 
+  <p>Manage students & notices</p>
 
+ </div>
 
-    <input
 
-     className="input"
 
-     placeholder="notice text"
+ {/* SEARCH + FILTER */}
 
-     value={notice}
+ <div className="section-card stack">
 
-     onChange={
 
-      e=>setNotice(
 
-       e.target.value
+  <input
 
-      )
+   className="input"
 
-     }
+   placeholder="Search user..."
 
-    />
+   onChange={e=>setSearch(e.target.value)}
 
+  />
 
 
-    <input
 
-     type="file"
+  <div style={{display:"flex",gap:"10px"}}>
 
-     onChange={
 
-      e=>setFile(
 
-       e.target.files[0]
+   <select
 
-      )
+    className="input"
 
-     }
+    onChange={e=>setBranch(e.target.value)}
 
-    />
+   >
 
+    <option value="">All Branch</option>
 
+    <option>CSE</option>
 
-    <label>
+    <option>IT</option>
 
-     pin notice
+    <option>ME</option>
 
-     <input
+    <option>EE</option>
 
-      type="checkbox"
+    <option>CE</option>
 
-      checked={pinned}
+    <option>OTHER</option>
 
-      onChange={
+   </select>
 
-       e=>setPinned(
 
-        e.target.checked
 
-       )
+   <select
 
-      }
+    className="input"
 
-     />
+    onChange={e=>setYear(e.target.value)}
 
-    </label>
+   >
 
+    <option value="">All Year</option>
 
+    <option>1st</option>
 
-    <button
+    <option>2nd</option>
 
-     className="btn"
+    <option>3rd</option>
 
-     onClick={addNotice}
+    <option>4th</option>
 
-    >
-
-     publish notice
-
-    </button>
-
-   </div>
-
-
-
-   <div className="grid">
-
-    {notices.map(n=>(
-
-     <div
-
-      key={n._id}
-
-      className="section-card"
-
-     >
-
-
-
-      {n.isPinned && (
-
-       <div>
-
-        📌 pinned
-
-       </div>
-
-      )}
-
-
-
-      <p>{n.text}</p>
-
-
-
-      {n.file && (
-
-       <a
-
-        href={`http://localhost:5000/uploads/${n.file}`}
-
-        target="_blank"
-
-       >
-
-        open attachment
-
-       </a>
-
-      )}
-
-
-
-      <small>
-
-       {
-
-        new Date(
-
-         n.createdAt
-
-        ).toLocaleString()
-
-       }
-
-      </small>
-
-
-
-     </div>
-
-    ))}
-
-   </div>
+   </select>
 
 
 
   </div>
+
+
+
+ </div>
+
+
+
+ {/* USERS */}
+
+ <div className="grid">
+
+ {currentUsers.map(u=>(
+
+
+
+  <div
+
+   key={u._id}
+
+   className="section-card"
+
+   onClick={()=>setSelectedUser(u)}
+
+   style={{cursor:"pointer"}}
+
+  >
+
+
+
+   <h3>
+
+    {u.fullName}
+
+   </h3>
+
+
+
+   <p>
+
+    {u.email}
+
+   </p>
+
+
+
+   <div className="badge">
+
+    {u.branch}
+
+   </div>
+
+
+
+   <small>
+
+    {u.year}
+
+   </small>
+
+
+
+  </div>
+
+
+
+ ))}
+
+ </div>
+
+
+
+ {/* PAGINATION */}
+
+ <div
+
+  style={{
+
+   display:"flex",
+
+   justifyContent:"center",
+
+   gap:"10px",
+
+   marginTop:"20px"
+
+  }}
+
+ >
+
+
+
+ <button
+
+  className="btn secondary"
+
+  disabled={page===1}
+
+  onClick={()=>setPage(page-1)}
+
+ >
+
+  Prev
+
+ </button>
+
+
+
+ <span>
+
+  Page {page} / {totalPages || 1}
+
+ </span>
+
+
+
+ <button
+
+  className="btn secondary"
+
+  disabled={page===totalPages}
+
+  onClick={()=>setPage(page+1)}
+
+ >
+
+  Next
+
+ </button>
+
+
+
+ </div>
+
+
+
+ {/* USER DETAIL */}
+
+ {selectedUser && (
+
+ <div className="section-card stack">
+
+  <h2>User Details</h2>
+
+
+
+  <p>
+
+   Name:
+
+   {selectedUser.fullName}
+
+  </p>
+
+
+
+  <p>
+
+   Email:
+
+   {selectedUser.email}
+
+  </p>
+
+
+
+  <p>
+
+   College:
+
+   {selectedUser.college}
+
+  </p>
+
+
+
+  <p>
+
+   Branch:
+
+   {selectedUser.branch}
+
+  </p>
+
+
+
+  <p>
+
+   Year:
+
+   {selectedUser.year}
+
+  </p>
+
+
+
+  <textarea
+
+   className="input"
+
+   placeholder="Send message"
+
+   onChange={e=>setMessage(e.target.value)}
+
+  />
+
+
+
+  <button
+
+   className="btn"
+
+   onClick={sendMessage}
+
+  >
+
+   Send Message
+
+  </button>
+
+
+
+ </div>
+
+ )}
+
+
+
+ {/* NOTICE */}
+
+ <div className="hero">
+
+  <h2>Notices</h2>
+
+ </div>
+
+
+
+ <div className="section-card stack">
+
+  <input
+
+   className="input"
+
+   placeholder="Write notice"
+
+   value={notice}
+
+   onChange={e=>setNotice(e.target.value)}
+
+  />
+
+
+
+  <button
+
+   className="btn"
+
+   onClick={addNotice}
+
+  >
+
+   Publish
+
+  </button>
+
+ </div>
+
+
+
+ <div className="grid">
+
+ {notices.map(n=>(
+
+  <div
+
+   key={n._id}
+
+   className="section-card"
+
+  >
+
+
+
+   <p>
+
+    {n.text}
+
+   </p>
+
+
+
+   <small>
+
+    {
+
+     new Date(n.createdAt)
+
+     .toLocaleString()
+
+    }
+
+   </small>
+
+
+
+  </div>
+
+ ))}
+
+ </div>
+
+
+
+ </div>
 
  );
 

@@ -1,24 +1,23 @@
 import axios from "axios";
-
 import { useEffect,useState } from "react";
-
 import Navbar from "../components/Navbar";
-
-
+import Pagination from "../components/Pagination";
 
 export default function Notices(){
 
- const [notices,setNotices]=useState([]);
+ const [notices,setNotices] = useState([]);
 
- const role=localStorage.getItem("role");
+ const [page,setPage] = useState(1);
+
+ const noticePerPage = 6;
+
+ const role = localStorage.getItem("role");
 
 
 
  useEffect(()=>{
 
-  axios.get("http://localhost:5000/api/notice")
-
-  .then(res=>setNotices(res.data));
+  loadNotices();
 
 
 
@@ -36,95 +35,187 @@ export default function Notices(){
 
 
 
+ const loadNotices = ()=>{
+
+  axios.get(
+
+   "http://localhost:5000/api/notice"
+
+  )
+  .then(res=>setNotices(res.data))
+  .catch(()=>setNotices([]));
+
+ };
+
+
+
+ /* PINNED FIRST */
+
+ const pinned = notices.filter(
+
+  n=>n.isPinned
+
+ );
+
+
+
+ const normal = notices.filter(
+
+  n=>!n.isPinned
+
+ );
+
+
+
+ const orderedNotices = [
+
+  ...pinned,
+
+  ...normal
+
+ ];
+
+
+
+ /* PAGINATION */
+
+ const lastIndex =
+
+  page * noticePerPage;
+
+
+
+ const firstIndex =
+
+  lastIndex - noticePerPage;
+
+
+
+ const currentNotice =
+
+  orderedNotices.slice(
+
+   firstIndex,
+
+   lastIndex
+
+  );
+
+
+
  return(
 
-  <div className="app-shell">
+ <div className="app-shell">
 
-   <Navbar role={role}/>
-
-
-
-   <div className="hero">
-
-    <h1>notices</h1>
-
-   </div>
+ <Navbar role={role}/>
 
 
 
-   <div className="grid">
+ <div className="hero">
 
-    {notices.map(n=>(
+  <h1>Notices</h1>
 
-     <div
-
-      key={n._id}
-
-      className="section-card"
-
-     >
+ </div>
 
 
 
-      {n.isPinned && (
+ <div className="grid">
 
-       <div>
+ {currentNotice.map(n=>(
 
-        📌 pinned
+  <div
 
-       </div>
+   key={n._id}
 
-      )}
+   className="section-card"
 
-
-
-      <p>{n.text}</p>
+  >
 
 
 
-      {n.file && (
+   {n.isPinned && (
 
-       <a
+    <div
 
-        href={`http://localhost:5000/uploads/${n.file}`}
+     style={{
 
-        target="_blank"
+      color:"#2563eb",
 
-       >
+      fontWeight:"bold"
 
-        open file
+     }}
 
-       </a>
+    >
 
-      )}
+     📌 pinned notice
 
+    </div>
 
-
-      <small>
-
-       {
-
-        new Date(
-
-         n.createdAt
-
-        ).toLocaleString()
-
-       }
-
-      </small>
+   )}
 
 
 
-     </div>
+   <p>{n.text}</p>
 
-    ))}
 
-   </div>
+
+   {n.file && (
+
+    <a
+
+     href={`http://localhost:5000/uploads/${n.file}`}
+
+     target="_blank"
+
+    >
+
+     open file
+
+    </a>
+
+   )}
+
+
+
+   <small>
+
+    {
+
+     new Date(
+
+      n.createdAt
+
+     ).toLocaleString()
+
+    }
+
+   </small>
 
 
 
   </div>
+
+ ))}
+
+ </div>
+
+
+
+ <Pagination
+
+  totalItems={orderedNotices.length}
+
+  itemsPerPage={noticePerPage}
+
+  currentPage={page}
+
+  setCurrentPage={setPage}
+
+ />
+
+
+
+ </div>
 
  );
 

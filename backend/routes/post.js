@@ -1,54 +1,105 @@
-const express = require("express");
-const router = express.Router();
-
+const router = require("express").Router();
 const Post = require("../models/Post");
 const auth = require("../middleware/auth");
 
-const multer = require("multer");
 
+/* CREATE POST */
+router.post("/", auth, async (req,res)=>{
 
+ try{
 
-/* FILE UPLOAD SETUP */
+  const newPost = new Post({
 
-const storage = multer.diskStorage({
+   title:req.body.title,
+   content:req.body.content,
+   author:req.body.author,
+   role:req.body.role,
+   userId:req.user.id
 
- destination: function(req,file,cb){
+  });
 
-  cb(null,"uploads/");
+  const savedPost = await newPost.save();
 
- },
+  res.json(savedPost);
 
- filename: function(req,file,cb){
+ }
+ catch(err){
 
-  cb(null,Date.now()+"-"+file.originalname);
+  res.status(500).json(err);
 
  }
 
 });
 
-const upload = multer({storage});
 
 
-
-/* CREATE POST */
-
-router.post("/", auth, upload.single("file"), async (req,res)=>{
+/* GET POSTS */
+router.get("/", async (req,res)=>{
 
  try{
 
-  const post = new Post({
+  const posts = await Post.find({
+   isDeleted:false
+  })
+  .sort({createdAt:-1});
 
-   userId: req.user.id,
+  res.json(posts);
 
-   title: req.body.title,
+ }
+ catch(err){
 
-   content: req.body.content,
+  res.status(500).json(err);
 
-   author: req.user.email,
+ }
 
-   role: req.user.role,
+});
 
-   file: req.file ? req.file.filename : null
+
+
+/* LIKE POST */
+router.put("/like/:id", auth, async (req,res)=>{
+
+ try{
+
+  const post = await Post.findById(req.params.id);
+
+  if(!post.likes.includes(req.user.id)){
+
+   post.likes.push(req.user.id);
+
+  }
+  else{
+
+   post.likes.pull(req.user.id);
+
+  }
+
+  await post.save();
+
+  res.json(post);
+
+ }
+ catch(err){
+
+  res.status(500).json(err);
+
+ }
+
+});
+
+
+
+/* COMMENT */
+router.post("/comment/:id", auth, async (req,res)=>{
+
+ try{
+
+  const post = await Post.findById(req.params.id);
+
+  post.comments.push({
+
+   userId:req.user.id,
+   text:req.body.text
 
   });
 
@@ -57,285 +108,13 @@ router.post("/", auth, upload.single("file"), async (req,res)=>{
   res.json(post);
 
  }
-
  catch(err){
 
-  console.log("Create post error",err);
-
-  res.status(500).send("Server error");
+  res.status(500).json(err);
 
  }
 
 });
-
-
-
-/* GET ALL POSTS */
-
-router.get("/", auth, async (req,res)=>{
-
- try{
-
-  const posts = await Post.find()
-
-  .sort({
-
-   isPinned:-1,
-
-   createdAt:-1
-
-  });
-
-  res.json(posts);
-
- }
-
- catch(err){
-
-  console.log("Fetch post error",err);
-
-  res.status(500).send("Server error");
-
- }
-
-});
-
-
-
-/* SOFT DELETE POST */
-
-router.delete("/:id", auth, async (req,res)=>{
-
- try{
-
-  const post = await Post.findByIdAndUpdate(
-
-   req.params.id,
-
-   {
-
-    isDeleted:true,
-
-    deletedBy:"admin"
-
-   },
-
-   {new:true}
-
-  );
-
-  res.json(post);
-
- }
-
- catch(err){
-
-  console.log("Delete error",err);
-
-  res.status(500).send("Server error");
-
- }
-
-});
-
-
-
-/* PIN POST WITH TIME */
-
-router.put("/pin/:id", auth, async (req,res)=>{
-
- try{
-
-  const hours = req.body.hours;
-
-  let expireTime = null;
-
-
-
-  if(hours){
-
-   expireTime = new Date(
-
-    Date.now() + hours*60*60*1000
-
-   );
-
-  }
-
-
-
-  const post = await Post.findByIdAndUpdate(
-
-   req.params.id,
-
-   {
-
-    isPinned:true,
-
-    pinnedUntil:expireTime
-
-   },
-
-   {new:true}
-
-  );
-
-
-
-  res.json(post);
-
- }
-
- catch(err){
-
-  console.log("Pin error",err);
-
-  res.status(500).send("Server error");
-
- }
-
-});
-
-
-
-/* UNPIN POST */
-
-router.put("/unpin/:id", auth, async (req,res)=>{
-
- try{
-
-  const post = await Post.findByIdAndUpdate(
-
-   req.params.id,
-
-   {
-
-    isPinned:false,
-
-    pinnedUntil:null
-
-   },
-
-   {new:true}
-
-  );
-
-
-
-  res.json(post);
-
- }
-
- catch(err){
-
-  console.log("Unpin error",err);
-
-  res.status(500).send("Server error");
-
- }
-
-});
-
 
 
 module.exports = router;
-router.get("/myposts", auth, async (req,res)=>{
-
- try{
-
-  const posts = await Post.find({
-
-   userId:req.user.id
-
-  })
-
-  .sort({
-
-   createdAt:-1
-
-  });
-
-
-
-  res.json(posts);
-
- }
-
- catch(err){
-
-  res.status(500).json(err);
-
- }
-
-});
-/* EDIT POST */
-
-router.put("/:id", auth, async(req,res)=>{
-
- try{
-
-  const post = await Post.findOneAndUpdate(
-
-   {
-
-    _id:req.params.id,
-
-    userId:req.user.id
-
-   },
-
-   {
-
-    title:req.body.title,
-
-    content:req.body.content
-
-   },
-
-   {new:true}
-
-  );
-
-
-
-  res.json(post);
-
- }
-
- catch(err){
-
-  res.status(500).json(err);
-
- }
-
-});
-
-
-
-/* USER DELETE OWN POST */
-
-router.delete("/user/:id", auth, async(req,res)=>{
-
- try{
-
-  await Post.deleteOne({
-
-   _id:req.params.id,
-
-   userId:req.user.id
-
-  });
-
-
-
-  res.json("deleted");
-
- }
-
- catch(err){
-
-  res.status(500).json(err);
-
- }
-
-});

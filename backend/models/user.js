@@ -34,7 +34,11 @@ const UserSchema = new mongoose.Schema({
  role:{
   type:String,
   default:"student"
- }
+ },
+ profilePhoto: {
+  type: String,
+  default: ""
+}
 
 },{timestamps:true});
 

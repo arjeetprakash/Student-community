@@ -116,3 +116,10 @@ button {
   margin: 0;
   color: #475569;
 }
+button:active{
+
+ transform:scale(0.9);
+
+ transition:0.2s;
+
+}
