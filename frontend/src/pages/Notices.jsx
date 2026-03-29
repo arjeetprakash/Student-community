@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useEffect,useState } from "react";
+import { useEffect,useMemo,useState } from "react";
 import Navbar from "../components/Navbar";
 import Pagination from "../components/Pagination";
 
@@ -8,6 +8,9 @@ export default function Notices(){
  const [notices,setNotices] = useState([]);
 
  const [page,setPage] = useState(1);
+ const [search,setSearch] = useState("");
+ const [showPinnedOnly,setShowPinnedOnly] = useState(false);
+ const [loading,setLoading] = useState(true);
 
  const noticePerPage = 6;
 
@@ -37,44 +40,42 @@ export default function Notices(){
 
  const loadNotices = ()=>{
 
+  setLoading(true);
   axios.get(
 
    "http://localhost:5000/api/notice"
 
   )
   .then(res=>setNotices(res.data))
-  .catch(()=>setNotices([]));
+  .catch(()=>setNotices([]))
+  .finally(()=>setLoading(false));
 
  };
 
 
+ const orderedNotices = useMemo(()=>{
 
- /* PINNED FIRST */
+  const recentSeen = localStorage.getItem("noticeSeen");
 
- const pinned = notices.filter(
+  const filtered = notices.filter(n=>{
+   const matchesText = n.text?.toLowerCase().includes(search.toLowerCase());
+   const matchesPin = showPinnedOnly ? n.isPinned : true;
+   return matchesText && matchesPin;
+  });
 
-  n=>n.isPinned
+  const sorted = [
+   ...filtered.filter(n=>n.isPinned),
+   ...filtered.filter(n=>!n.isPinned)
+  ];
 
- );
+  return sorted.map(n=>(
+   {
+    ...n,
+    isNew: recentSeen ? new Date(n.createdAt) > new Date(recentSeen) : false
+   }
+  ));
 
-
-
- const normal = notices.filter(
-
-  n=>!n.isPinned
-
- );
-
-
-
- const orderedNotices = [
-
-  ...pinned,
-
-  ...normal
-
- ];
-
+ },[notices,search,showPinnedOnly]);
 
 
  /* PAGINATION */
@@ -114,109 +115,148 @@ export default function Notices(){
  <div className="hero">
 
   <h1>Notices</h1>
+  <p>Stay on top of new announcements</p>
 
+  <div style={{display:"flex",gap:"10px",flexWrap:"wrap",justifyContent:"center",marginTop:"10px"}}>
+   <input
+    className="input"
+    placeholder="Search notices"
+    value={search}
+    onChange={e=>{setSearch(e.target.value); setPage(1);} }
+    style={{maxWidth:"320px"}}
+   />
+
+   <label style={{display:"flex",gap:"8px",alignItems:"center",fontWeight:600}}>
+    <input
+     type="checkbox"
+     checked={showPinnedOnly}
+     onChange={e=>{setShowPinnedOnly(e.target.checked); setPage(1);} }
+    />
+    Pinned only
+   </label>
+
+   <button className="btn secondary" onClick={loadNotices}>
+    Refresh
+   </button>
+  </div>
  </div>
 
 
 
- <div className="grid">
+ {loading ? (
+  <div className="grid">
+   {[1,2,3].map(i=>(
+    <div key={i} className="section-card skeleton"/>
+   ))}
+  </div>
+ ) : (
+  <>
+   {currentNotice.length===0 && (
+    <div className="section-card" style={{textAlign:"center"}}>
+     <p>No notices match.</p>
+     <small>Clear filters or check back later.</small>
+    </div>
+   )}
 
- {currentNotice.map(n=>(
+   <div className="grid">
 
-  <div
-
-   key={n._id}
-
-   className="section-card"
-
-  >
-
-
-
-   {n.isPinned && (
+   {currentNotice.map(n=>(
 
     <div
 
-     style={{
+     key={n._id}
 
-      color:"#2563eb",
-
-      fontWeight:"bold"
-
-     }}
+     className="section-card"
 
     >
 
-     📌 pinned notice
+
+
+     <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+      {n.isPinned && (
+
+       <div className="pin">
+
+        📌 pinned
+
+       </div>
+
+      )}
+
+      {n.isNew && (
+       <div className="chip subtle">New</div>
+      )}
+     </div>
+
+
+
+     <p>{n.text}</p>
+
+
+
+     {n.file && (
+
+      <a
+
+       href={`http://localhost:5000/uploads/${n.file}`}
+
+       target="_blank"
+
+       rel="noreferrer"
+
+       className="chip"
+
+      >
+
+       📂 Open file
+
+      </a>
+
+     )}
+
+
+
+     <small>
+
+      {
+
+       new Date(
+
+        n.createdAt
+
+       ).toLocaleString()
+
+      }
+
+     </small>
+
+
 
     </div>
 
-   )}
+   ))}
+
+   </div>
 
 
 
-   <p>{n.text}</p>
+   <Pagination
 
+    totalItems={orderedNotices.length}
 
+    itemsPerPage={noticePerPage}
 
-   {n.file && (
+    currentPage={page}
 
-    <a
+    setCurrentPage={setPage}
 
-     href={`http://localhost:5000/uploads/${n.file}`}
-
-     target="_blank"
-
-    >
-
-     open file
-
-    </a>
-
-   )}
-
-
-
-   <small>
-
-    {
-
-     new Date(
-
-      n.createdAt
-
-     ).toLocaleString()
-
-    }
-
-   </small>
-
-
-
-  </div>
-
- ))}
-
- </div>
-
-
-
- <Pagination
-
-  totalItems={orderedNotices.length}
-
-  itemsPerPage={noticePerPage}
-
-  currentPage={page}
-
-  setCurrentPage={setPage}
-
- />
+   />
+  </>
+ )}
 
 
 
  </div>
 
  );
-
 }

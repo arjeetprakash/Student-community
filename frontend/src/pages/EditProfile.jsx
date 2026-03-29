@@ -1,7 +1,5 @@
 import axios from "axios";
-
 import { useEffect,useState } from "react";
-
 import Navbar from "../components/Navbar";
 
 
@@ -11,8 +9,15 @@ export default function EditProfile(){
 
 
  const [user,setUser]=useState({});
-
- const [year,setYear]=useState("");
+ const [form,setForm]=useState({
+  fullName:"",
+  college:"",
+  branch:"",
+  year:"",
+  profilePhoto:""
+ });
+ const [status,setStatus]=useState("");
+ const [saving,setSaving]=useState(false);
 
 
 
@@ -48,8 +53,13 @@ export default function EditProfile(){
   .then(res=>{
 
    setUser(res.data);
-
-   setYear(res.data.year);
+   setForm({
+    fullName:res.data.fullName || "",
+    college:res.data.college || "",
+    branch:res.data.branch || "",
+    year:res.data.year || "",
+    profilePhoto:res.data.profilePhoto || ""
+   });
 
   });
 
@@ -57,29 +67,43 @@ export default function EditProfile(){
 
 
 
- const updateYear=async()=>{
+ const updateProfile=async()=>{
 
   const token=localStorage.getItem("token");
 
+  try{
 
+   setSaving(true);
+   setStatus("Saving...");
 
-  await axios.put(
+   const res = await axios.put(
 
-   "http://localhost:5000/api/auth/update-year",
+    "http://localhost:5000/api/auth/update-profile",
 
-   {year},
+    form,
 
-   {
+    {
 
-    headers:{Authorization:`Bearer ${token}`}
+     headers:{Authorization:`Bearer ${token}`}
 
-   }
+    }
 
-  );
+   );
 
+   setUser(res.data);
+   setStatus("Profile updated");
 
+  }
+  catch(err){
 
-  alert("profile updated");
+   console.log(err);
+   setStatus("Update failed");
+
+  }
+  finally{
+   setSaving(false);
+   setTimeout(()=>setStatus(""),1800);
+  }
 
  };
 
@@ -96,6 +120,8 @@ export default function EditProfile(){
  <div className="hero">
 
   <h1>Edit Profile</h1>
+  <p>Keep your student info current</p>
+  {status && <div className="toast">{status}</div>}
 
  </div>
 
@@ -105,75 +131,109 @@ export default function EditProfile(){
 
 
 
-  <div>
+  <label className="stack">
 
-   <strong>Name:</strong>
+   <strong>Name</strong>
 
-   {user.fullName}
+   <input
+    className="input"
+    value={form.fullName}
+    onChange={e=>setForm({...form,fullName:e.target.value})}
+   />
 
-  </div>
-
-
-
-  <div>
-
-   <strong>Email:</strong>
-
-   {user.email}
-
-  </div>
+  </label>
 
 
 
-  <div>
+  <label className="stack">
 
-   <strong>College:</strong>
+   <strong>Email</strong>
 
-   {user.college}
+   <input
+    className="input"
+    value={user.email || ""}
+    disabled
+   />
 
-  </div>
-
-
-
-  <div>
-
-   <strong>Branch:</strong>
-
-   {user.branch}
-
-  </div>
+  </label>
 
 
 
-  <div>
+  <label className="stack">
 
-   <strong>Year:</strong>
+   <strong>College</strong>
+
+   <input
+    className="input"
+    value={form.college}
+    onChange={e=>setForm({...form,college:e.target.value})}
+   />
+
+  </label>
 
 
+
+  <label className="stack">
+
+   <strong>Branch</strong>
+
+   <input
+    className="input"
+    value={form.branch}
+    onChange={e=>setForm({...form,branch:e.target.value})}
+   />
+
+  </label>
+
+
+
+  <label className="stack">
+
+   <strong>Year</strong>
 
    <select
 
     className="input"
 
-    value={year}
+    value={form.year}
 
-    onChange={e=>setYear(e.target.value)}
+    onChange={e=>setForm({...form,year:e.target.value})}
 
    >
 
+    <option value="">Select year</option>
     <option>1st</option>
-
     <option>2nd</option>
-
     <option>3rd</option>
-
     <option>4th</option>
 
    </select>
 
+  </label>
 
 
-  </div>
+
+  <label className="stack">
+
+   <strong>Profile Photo URL</strong>
+
+   <input
+    className="input"
+    value={form.profilePhoto}
+    onChange={e=>setForm({...form,profilePhoto:e.target.value})}
+    placeholder="https://..."
+   />
+
+   {form.profilePhoto && (
+    <img
+     src={form.profilePhoto}
+     alt="preview"
+     width="120"
+     style={{borderRadius:"14px",border:"1px solid #e2e8f0"}}
+    />
+   )}
+
+  </label>
 
 
 
@@ -181,11 +241,13 @@ export default function EditProfile(){
 
    className="btn"
 
-   onClick={updateYear}
+   onClick={updateProfile}
+
+   disabled={saving}
 
   >
 
-   Save
+   {saving ? "Saving..." : "Save changes"}
 
   </button>
 
@@ -198,5 +260,4 @@ export default function EditProfile(){
  </div>
 
  );
-
 }

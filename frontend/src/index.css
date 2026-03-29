@@ -64,6 +64,23 @@ button {
   background: #0f172a;
 }
 
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.chip.subtle {
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 600;
+}
+
 .stack {
   display: flex;
   flex-direction: column;
@@ -122,4 +139,55 @@ button:active{
 
  transition:0.2s;
 
+}
+
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #ecfeff;
+  color: #0f172a;
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.skeleton {
+  height: 180px;
+  background: linear-gradient(90deg,#e2e8f0 25%,#f8fafc 50%,#e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #fff7ed;
+  color: #c2410c;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.comments {
+  margin-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comment-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
 }

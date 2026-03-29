@@ -2,6 +2,7 @@ const router = require("express").Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const auth = require("../middleware/auth");
 
 /* ===============================
    REGISTER USER
@@ -146,28 +147,29 @@ router.put("/profile-photo", async (req, res) => {
     res.status(500).json("Error updating photo");
 
   }
-  /* UPDATE YEAR */
+});
 
-router.put("/update-year",auth,async(req,res)=>{
+
+/* ===============================
+  UPDATE YEAR
+================================ */
+router.put("/update-year", auth, async (req,res)=>{
 
  try{
 
   const user = await User.findByIdAndUpdate(
 
-   req.user.id,
+  req.user.id,
 
-   {year:req.body.year},
+  {year:req.body.year},
 
-   {new:true}
+  {new:true}
 
   ).select("-password");
-
-
 
   res.json(user);
 
  }
-
  catch(err){
 
   res.status(500).json(err);
@@ -175,6 +177,39 @@ router.put("/update-year",auth,async(req,res)=>{
  }
 
 });
+
+
+/* ===============================
+  UPDATE PROFILE (general)
+================================ */
+router.put("/update-profile", auth, async (req,res)=>{
+
+ try{
+
+  const {fullName,college,branch,year,profilePhoto} = req.body;
+
+  const updates = {};
+  if(fullName!==undefined) updates.fullName=fullName;
+  if(college!==undefined) updates.college=college;
+  if(branch!==undefined) updates.branch=branch;
+  if(year!==undefined) updates.year=year;
+  if(profilePhoto!==undefined) updates.profilePhoto=profilePhoto;
+
+  const user = await User.findByIdAndUpdate(
+  req.user.id,
+  updates,
+  {new:true}
+  ).select("-password");
+
+  res.json(user);
+
+ }
+ catch(err){
+
+  console.log(err);
+  res.status(500).json("Error updating profile");
+
+ }
 
 });
 

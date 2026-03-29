@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useEffect,useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "../components/Navbar";
 import Pagination from "../components/Pagination";
 
@@ -10,11 +10,15 @@ export default function Dashboard(){
  const [content,setContent]=useState("");
  const [page,setPage]=useState(1);
  const [comment,setComment]=useState({});
+ const [search,setSearch]=useState("");
+ const [onlyMine,setOnlyMine]=useState(false);
+ const [loading,setLoading]=useState(true);
+ const [status,setStatus]=useState("");
 
  const postsPerPage=5;
 
  const role=localStorage.getItem("role");
-
+ const username=localStorage.getItem("username");
 
 
  // LOAD POSTS
@@ -25,11 +29,11 @@ export default function Dashboard(){
  },[]);
 
 
-
  const loadPosts=async()=>{
 
   try{
 
+   setLoading(true);
    const res=await axios.get(
 
     "http://localhost:5000/api/post"
@@ -37,16 +41,21 @@ export default function Dashboard(){
    );
 
    setPosts(res.data);
+   setStatus("Feed updated");
 
   }
   catch(err){
 
+   setStatus("Could not load posts");
    console.log("load error",err);
 
   }
+  finally{
+   setLoading(false);
+   setTimeout(()=>setStatus(""),2000);
+  }
 
  };
-
 
 
  // CREATE POST
@@ -66,7 +75,7 @@ export default function Dashboard(){
 
      title,
      content,
-     author:localStorage.getItem("username"),
+     author:username,
      role:localStorage.getItem("role")
 
     },
@@ -81,18 +90,19 @@ export default function Dashboard(){
 
    setTitle("");
    setContent("");
+   setStatus("Posted! 🎉");
 
    loadPosts();
 
   }
   catch(err){
 
+   setStatus("Post failed");
    console.log("post error",err);
 
   }
 
  };
-
 
 
  // LIKE POST
@@ -121,12 +131,12 @@ export default function Dashboard(){
   }
   catch(err){
 
+   setStatus("Like failed");
    console.log("like error",err);
 
   }
 
  };
-
 
 
  // COMMENT POST
@@ -161,11 +171,13 @@ export default function Dashboard(){
 
    });
 
+   setStatus("Comment added");
    loadPosts();
 
   }
   catch(err){
 
+   setStatus("Comment failed");
    console.log("comment error",err);
 
   }
@@ -173,15 +185,29 @@ export default function Dashboard(){
  };
 
 
+ // FILTER + ORDER
+ const orderedPosts=useMemo(()=>{
 
- // PIN ORDER
- const orderedPosts=[
+  const filtered=posts.filter(p=>{
 
-  ...posts.filter(p=>p.isPinned),
-  ...posts.filter(p=>!p.isPinned)
+   const matchesSearch=(p.title?.toLowerCase().includes(search.toLowerCase()) ||
+    p.content?.toLowerCase().includes(search.toLowerCase()) ||
+    p.author?.toLowerCase().includes(search.toLowerCase()));
 
- ];
+   const matchesMine=onlyMine ? p.author===username : true;
 
+   return matchesSearch && matchesMine;
+
+  });
+
+  return [
+
+   ...filtered.filter(p=>p.isPinned),
+   ...filtered.filter(p=>!p.isPinned)
+
+  ];
+
+ },[posts,search,onlyMine,username]);
 
 
  // PAGINATION
@@ -197,6 +223,8 @@ export default function Dashboard(){
  );
 
 
+ const remainingChars=240-content.length;
+
 
  return(
 
@@ -209,6 +237,11 @@ export default function Dashboard(){
  <div className="hero">
 
   <h1>Student Hub</h1>
+  <p>Share updates, cheer peers, and pin highlights</p>
+
+  {status && (
+   <div className="toast">{status}</div>
+  )}
 
  </div>
 
@@ -218,17 +251,23 @@ export default function Dashboard(){
 
  <div className="section-card stack">
 
-  <input
+  <div style={{display:"flex",gap:"10px",alignItems:"center",flexWrap:"wrap"}}>
+   <input
 
-   className="input"
+    className="input"
 
-   placeholder="title"
+    placeholder="Title"
 
-   value={title}
+    value={title}
 
-   onChange={e=>setTitle(e.target.value)}
+    onChange={e=>setTitle(e.target.value)}
 
-  />
+    style={{flex:1,minWidth:"200px"}}
+
+   />
+
+   <div className="chip">Signed in as {username || "anon"}</div>
+  </div>
 
 
 
@@ -236,177 +275,243 @@ export default function Dashboard(){
 
    className="input"
 
-   placeholder="content"
+   placeholder="Share what is happening..."
 
    value={content}
 
+   maxLength={240}
+
    onChange={e=>setContent(e.target.value)}
+
+   rows={4}
 
   />
 
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px"}}>
+   <small style={{color:remainingChars<20?"#dc2626":"#475569"}}>
+    {remainingChars} characters left
+   </small>
+
+   <div style={{display:"flex",gap:"10px",alignItems:"center"}}>
+    <button
+
+     className="btn"
+
+     onClick={createPost}
+
+    >
+
+     Post update
+
+    </button>
+
+    <button
+     className="btn secondary"
+     onClick={loadPosts}
+    >
+     Refresh
+    </button>
+   </div>
+  </div>
+
+ </div>
 
 
-  <button
 
-   className="btn"
+ {/* FILTER BAR */}
+ <div className="section-card" style={{display:"flex",gap:"12px",flexWrap:"wrap",alignItems:"center"}}>
+  <input
+   className="input"
+   placeholder="Search by title, content, author"
+   value={search}
+   onChange={e=>{setSearch(e.target.value); setPage(1);} }
+   style={{flex:1,minWidth:"220px"}}
+  />
 
-   onClick={createPost}
+  <label style={{display:"flex",gap:"8px",alignItems:"center",fontWeight:600}}>
+   <input
+    type="checkbox"
+    checked={onlyMine}
+    onChange={e=>{setOnlyMine(e.target.checked); setPage(1);} }
+   />
+   My posts only
+  </label>
 
-  >
-
-   Post
-
-  </button>
-
+  <div className="chip subtle">{orderedPosts.length} results</div>
  </div>
 
 
 
  {/* POSTS */}
 
- <div className="grid">
+ {loading ? (
+  <div className="grid">
+   {[1,2,3].map(i=>(
+    <div key={i} className="section-card skeleton"/>
+   ))}
+  </div>
+ ) : (
+  <>
+   {orderedPosts.length===0 && (
+    <div className="section-card" style={{textAlign:"center"}}>
+     <p>No posts match yet.</p>
+     <small>Try changing filters or start the conversation.</small>
+    </div>
+   )}
 
- {
+   <div className="grid">
 
-  currentPosts.map(p=>(
+   {
 
-   <div
+    currentPosts.map(p=>(
 
-    key={p._id}
+     <div
 
-    className="section-card"
+      key={p._id}
 
-   >
+      className="section-card"
 
-    {p.isPinned && <div>📌 pinned</div>}
+     >
 
-
-
-    <h3>{p.title}</h3>
-
-    <p>{p.content}</p>
-
-
-
-    <small>
-
-     {p.author}
-
-    </small>
-
-
-
-    <small>
-
-     {
-
-      new Date(p.createdAt)
-
-      .toLocaleString()
-
-     }
-
-    </small>
+      {p.isPinned && <div className="pin">📌 Pinned</div>}
 
 
 
-    {/* LIKE */}
+      <h3>{p.title}</h3>
 
-    <button
-
-     className="btn secondary"
-
-     onClick={()=>likePost(p._id)}
-
-    >
-
-     ❤️ {p.likes?.length || 0}
-
-    </button>
+      <p>{p.content}</p>
 
 
 
-    {/* COMMENT */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"6px"}}>
+       <small>
 
-    <input
+        {p.author}
 
-     className="input"
-
-     placeholder="write comment..."
-
-     value={comment[p._id] || ""}
-
-     onChange={e=>
-
-      setComment({
-
-       ...comment,
-       [p._id]:e.target.value
-
-      })
-
-     }
-
-    />
+       </small>
 
 
 
-    <button
+       <small>
 
-     className="btn"
+        {
 
-     onClick={()=>commentPost(p._id)}
+         new Date(p.createdAt)
 
-    >
+         .toLocaleString()
 
-     Add Comment
+        }
 
-    </button>
+       </small>
+      </div>
 
 
 
-    {/* COMMENTS */}
+      {/* LIKE */}
 
-    {
+      <div style={{display:"flex",gap:"10px",alignItems:"center",marginTop:"12px",flexWrap:"wrap"}}>
+       <button
 
-     p.comments?.map(c=>(
+        className="btn secondary"
 
-      <div key={c._id}>
+        onClick={()=>likePost(p._id)}
 
-       💬 {c.text}
+       >
+
+        ❤️ {p.likes?.length || 0}
+
+       </button>
+
+
+
+       {/* COMMENT */}
+
+       <div style={{flex:1,minWidth:"200px"}}>
+        <input
+
+         className="input"
+
+         placeholder="write comment..."
+
+         value={comment[p._id] || ""}
+
+         onChange={e=>
+
+          setComment({
+
+           ...comment,
+           [p._id]:e.target.value
+
+          })
+
+         }
+
+        />
+
+
+
+        <button
+
+         className="btn"
+
+         style={{marginTop:"8px"}}
+
+         onClick={()=>commentPost(p._id)}
+
+        >
+
+         Add Comment
+
+        </button>
+       </div>
 
       </div>
 
-     ))
 
-    }
+
+      {/* COMMENTS */}
+
+      {
+
+       p.comments?.length>0 && (
+        <div className="comments">
+         {p.comments.map(c=>(
+          <div key={c._id} className="comment-line">
+           <span>💬</span>
+           <span>{c.text}</span>
+          </div>
+         ))}
+        </div>
+       )
+
+      }
+     </div>
+
+    ))
+
+   }
 
    </div>
 
-  ))
-
- }
-
- </div>
 
 
+   <Pagination
 
- <Pagination
+    totalItems={orderedPosts.length}
 
-  totalItems={orderedPosts.length}
+    itemsPerPage={postsPerPage}
 
-  itemsPerPage={postsPerPage}
+    currentPage={page}
 
-  currentPage={page}
+    setCurrentPage={setPage}
 
-  setCurrentPage={setPage}
-
- />
+   />
+  </>
+ )}
 
 
 
  </div>
 
  );
-
 }

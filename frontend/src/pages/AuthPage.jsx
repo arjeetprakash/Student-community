@@ -5,6 +5,9 @@ import "../index.css";
 export default function AuthPage(){
 
  const [isLogin,setIsLogin] = useState(true);
+ const [showPassword,setShowPassword] = useState(false);
+ const [loading,setLoading] = useState(false);
+ const [error,setError] = useState("");
 
  const [data,setData] = useState({
 
@@ -28,9 +31,11 @@ export default function AuthPage(){
 
  const handleSubmit = async ()=>{
 
+  setError("");
+
   if(!data.email || !data.password){
 
-   alert("Fill required fields");
+   setError("Fill required fields");
 
    return;
 
@@ -40,7 +45,7 @@ export default function AuthPage(){
 
    if(data.password !== data.confirmPassword){
 
-    alert("Passwords do not match");
+    setError("Passwords do not match");
 
     return;
 
@@ -50,6 +55,8 @@ export default function AuthPage(){
 
   try{
 
+   setLoading(true);
+
    if(isLogin){
 
     const res = await axios.post(
@@ -58,9 +65,9 @@ export default function AuthPage(){
 
      {
 
-      email:data.email,
+  email:data.email,
 
-      password:data.password
+  password:data.password
 
      }
 
@@ -94,10 +101,6 @@ export default function AuthPage(){
 
 
 
-    alert("Account created successfully");
-
-
-
     setIsLogin(true);
 
    }
@@ -107,9 +110,11 @@ export default function AuthPage(){
   catch(err){
 
    console.log(err);
+   setError("Something went wrong. Try again.");
 
-   alert("Error");
-
+  }
+  finally{
+   setLoading(false);
   }
 
  };
@@ -118,7 +123,7 @@ export default function AuthPage(){
 
  return(
 
-  <div className="app-shell" style={{maxWidth:450}}>
+  <div className="app-shell" style={{maxWidth:480}}>
 
    <div className="hero">
 
@@ -127,74 +132,86 @@ export default function AuthPage(){
      {isLogin ? "Login" : "Create Student Account"}
 
     </h1>
-
+    <p style={{color:"#475569"}}>
+     {isLogin ? "Welcome back!" : "Join the community in minutes."}
+    </p>
    </div>
 
 
 
    <div className="section-card stack">
 
+    {error && <div className="toast" style={{background:"#fef2f2",border:"1px solid #fecdd3",color:"#b91c1c"}}>{error}</div>}
+
     {!isLogin && (
 
      <>
 
-      <input
+  <input
 
-       className="input"
+   className="input"
 
-       placeholder="Username"
+   placeholder="Username"
 
-       onChange={e=>setData({
+   value={data.username}
 
-        ...data,
+   onChange={e=>setData({
 
-        username:e.target.value
+    ...data,
 
-       })}
+    username:e.target.value
 
-      />
+   })}
 
-
-
-      <input
-
-       className="input"
-
-       placeholder="Full Name"
-
-       onChange={e=>setData({
-
-        ...data,
-
-        fullName:e.target.value
-
-       })}
-
-      />
+  />
 
 
 
-      <input
+  <input
 
-       className="input"
+   className="input"
 
-       placeholder="College Name"
+   placeholder="Full Name"
 
-       onChange={e=>setData({
+   value={data.fullName}
 
-        ...data,
+   onChange={e=>setData({
 
-        college:e.target.value
+    ...data,
 
-       })}
+    fullName:e.target.value
 
-      />
+   })}
+
+  />
 
 
 
-      <select
+  <input
+
+   className="input"
+
+   placeholder="College Name"
+
+   value={data.college}
+
+   onChange={e=>setData({
+
+    ...data,
+
+    college:e.target.value
+
+   })}
+
+  />
+
+
+
+  <select
 
  className="input"
+
+ value={data.branch}
 
  onChange={e=>setData({
 
@@ -252,31 +269,33 @@ export default function AuthPage(){
 
 
 
-      <select
+  <select
 
-       className="input"
+   className="input"
 
-       onChange={e=>setData({
+   value={data.year}
 
-        ...data,
+   onChange={e=>setData({
 
-        year:e.target.value
+    ...data,
 
-       })}
+    year:e.target.value
 
-      >
+   })}
 
-       <option>Select Year</option>
+  >
 
-       <option>1st</option>
+   <option value="">Select Year</option>
 
-       <option>2nd</option>
+   <option>1st</option>
 
-       <option>3rd</option>
+   <option>2nd</option>
 
-       <option>4th</option>
+   <option>3rd</option>
 
-      </select>
+   <option>4th</option>
+
+  </select>
 
      </>
 
@@ -290,11 +309,13 @@ export default function AuthPage(){
 
      placeholder="Email"
 
+     value={data.email}
+
      onChange={e=>setData({
 
-      ...data,
+  ...data,
 
-      email:e.target.value
+  email:e.target.value
 
      })}
 
@@ -302,23 +323,38 @@ export default function AuthPage(){
 
 
 
-    <input
+    <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+     <input
 
-     className="input"
+  className="input"
 
-     type="password"
+  type={showPassword?"text":"password"}
 
-     placeholder="Password"
+  placeholder="Password"
 
-     onChange={e=>setData({
+  value={data.password}
 
-      ...data,
+  onChange={e=>setData({
 
-      password:e.target.value
+   ...data,
 
-     })}
+   password:e.target.value
 
-    />
+  })}
+
+  style={{flex:1}}
+
+     />
+
+     <button
+  className="btn secondary"
+  onClick={()=>setShowPassword(!showPassword)}
+  style={{whiteSpace:"nowrap"}}
+  type="button"
+     >
+  {showPassword ? "Hide" : "Show"}
+     </button>
+    </div>
 
 
 
@@ -326,19 +362,21 @@ export default function AuthPage(){
 
      <input
 
-      className="input"
+  className="input"
 
-      type="password"
+  type={showPassword?"text":"password"}
 
-      placeholder="Confirm Password"
+  placeholder="Confirm Password"
 
-      onChange={e=>setData({
+  value={data.confirmPassword}
 
-       ...data,
+  onChange={e=>setData({
 
-       confirmPassword:e.target.value
+   ...data,
 
-      })}
+   confirmPassword:e.target.value
+
+  })}
 
      />
 
@@ -352,9 +390,13 @@ export default function AuthPage(){
 
      onClick={handleSubmit}
 
+     disabled={loading}
+
+     type="button"
+
     >
 
-     {isLogin ? "Login" : "Create Account"}
+     {loading ? "Please wait..." : isLogin ? "Login" : "Create Account"}
 
     </button>
 
@@ -364,7 +406,9 @@ export default function AuthPage(){
 
      className="btn secondary"
 
-     onClick={()=>setIsLogin(!isLogin)}
+     onClick={()=>{setIsLogin(!isLogin); setError("");}}
+
+     type="button"
 
     >
 
@@ -377,5 +421,4 @@ export default function AuthPage(){
   </div>
 
  );
-
 }
