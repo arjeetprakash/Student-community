@@ -91,9 +91,25 @@ router.get("/conversations", auth, async (req, res) => {
                readByReceiver: false
             });
 
+            const lastMessage = await Message.findOne({
+               $or: [
+                  { sender: req.user.id, receiver: otherUserId },
+                  { sender: otherUserId, receiver: req.user.id }
+               ]
+            })
+               .sort({ createdAt: -1 })
+               .select("text createdAt sender");
+
             return {
                ...conversation.toObject(),
-               unreadCount
+               unreadCount,
+               lastMessage: lastMessage
+                  ? {
+                     text: lastMessage.text,
+                     createdAt: lastMessage.createdAt,
+                     sender: String(lastMessage.sender)
+                  }
+                  : null
             };
          })
       );

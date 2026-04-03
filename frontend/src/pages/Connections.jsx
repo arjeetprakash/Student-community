@@ -14,9 +14,20 @@ export default function Connections() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [toast, setToast] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [typingUsers, setTypingUsers] = useState({});
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [pinnedConversations, setPinnedConversations] = useState(
+    JSON.parse(localStorage.getItem("pinnedConversations") || "[]")
+  );
+  const [mutedConversations, setMutedConversations] = useState(
+    JSON.parse(localStorage.getItem("mutedConversations") || "[]")
+  );
+  const [openActionMenu, setOpenActionMenu] = useState(null);
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const selectedConversationRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
 
   const token = localStorage.getItem("token");
   const userId = localStorage.getItem("userId");
@@ -100,12 +111,48 @@ export default function Connections() {
       }
     };
 
+    const handleUserTyping = ({ userId: typingUserId }) => {
+      setTypingUsers((current) => ({
+        ...current,
+        [typingUserId]: true
+      }));
+    };
+
+    const handleUserStoppedTyping = ({ userId: typingUserId }) => {
+      setTypingUsers((current) => {
+        const updated = { ...current };
+        delete updated[typingUserId];
+        return updated;
+      });
+    };
+
+    const handleUserOnline = ({ userId: onlineUserId }) => {
+      setOnlineUsers((current) => {
+        if (!current.includes(onlineUserId)) {
+          return [...current, onlineUserId];
+        }
+        return current;
+      });
+    };
+
+    const handleUserOffline = ({ userId: offlineUserId }) => {
+      setOnlineUsers((current) => current.filter((id) => id !== offlineUserId));
+    };
+
     socket.on("message:new", handleIncomingMessage);
     socket.on("conversation:read", handleConversationRead);
+    socket.on("user:typing", handleUserTyping);
+    socket.on("user:stopped-typing", handleUserStoppedTyping);
+    socket.on("user:online", handleUserOnline);
+    socket.on("user:offline", handleUserOffline);
 
     return () => {
       socket.off("message:new", handleIncomingMessage);
       socket.off("conversation:read", handleConversationRead);
+      socket.off("user:typing", handleUserTyping);
+      socket.off("user:stopped-typing", handleUserStoppedTyping);
+      socket.off("user:online", handleUserOnline);
+      socket.off("user:offline", handleUserOffline);
       disconnectChatSocket();
     };
   }, [token, userId]);
@@ -124,13 +171,15 @@ export default function Connections() {
         setLoading(true);
       }
       const headers = { Authorization: `Bearer ${token}` };
-      const [conversationsRes, requestsRes] = await Promise.all([
+      const [conversationsRes, requestsRes, onlineRes] = await Promise.all([
         axios.get("http://localhost:5000/api/chat-request/conversations", { headers }),
-        axios.get("http://localhost:5000/api/chat-request/pending", { headers })
+        axios.get("http://localhost:5000/api/chat-request/pending", { headers }),
+        axios.get("http://localhost:5000/api/users/online")
       ]);
 
       setConnectedUsers(conversationsRes.data);
       setPendingRequests(requestsRes.data);
+      setOnlineUsers(onlineRes.data.onlineUsers || []);
       setUnreadCount(
         conversationsRes.data.reduce((sum, conversation) => sum + (conversation.unreadCount || 0), 0)
       );
@@ -263,6 +312,92 @@ export default function Connections() {
     loadMessages(conversation);
   };
 
+  const handleTypingInput = (e) => {
+    setNewMessage(e.target.value);
+
+    if (!selectedConversation) return;
+
+    const socket = connectChatSocket(token);
+    if (!socket) return;
+
+    const otherUserId =
+      selectedConversation.sender._id === userId
+        ? selectedConversation.receiver._id
+        : selectedConversation.sender._id;
+
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      socket.emit("user:typing", { otherUserId });
+    }
+
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      socket.emit("user:stopped-typing", { otherUserId });
+    }, 2000);
+  };
+
+  const formatLastActive = (lastMessage) => {
+    if (!lastMessage?.createdAt) return "";
+    const time = new Date(lastMessage.createdAt);
+    const now = new Date();
+    const diffMs = now - time;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return time.toLocaleDateString();
+  };
+
+  const togglePinConversation = (conversationId, e) => {
+    e.stopPropagation();
+    const isPinned = pinnedConversations.includes(conversationId);
+    const updated = isPinned
+      ? pinnedConversations.filter((id) => id !== conversationId)
+      : [...pinnedConversations, conversationId];
+    setPinnedConversations(updated);
+    localStorage.setItem("pinnedConversations", JSON.stringify(updated));
+    setToast(isPinned ? "Unpinned conversation" : "Conversation pinned");
+    setOpenActionMenu(null);
+  };
+
+  const toggleMuteConversation = (conversationId, e) => {
+    e.stopPropagation();
+    const isMuted = mutedConversations.includes(conversationId);
+    const updated = isMuted
+      ? mutedConversations.filter((id) => id !== conversationId)
+      : [...mutedConversations, conversationId];
+    setMutedConversations(updated);
+    localStorage.setItem("mutedConversations", JSON.stringify(updated));
+    setToast(isMuted ? "Notifications enabled" : "Notifications muted");
+    setOpenActionMenu(null);
+  };
+
+  const deleteConversation = async (conversationId, e) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this conversation?")) {
+      return;
+    }
+    try {
+      // Just remove from local view (no backend endpoint, but you can add one)
+      setConnectedUsers((current) =>
+        current.filter((conv) => conv._id !== conversationId)
+      );
+      setToast("Conversation deleted");
+      setOpenActionMenu(null);
+      if (selectedConversation?._id === conversationId) {
+        setSelectedConversation(null);
+        setActiveTab("connections");
+      }
+    } catch (err) {
+      setToast("Error deleting conversation");
+    }
+  };
+
   return (
     <div style={{ padding: "24px 0" }}>
       <div style={{ marginBottom: "32px" }}>
@@ -337,9 +472,20 @@ export default function Connections() {
               ))}
             </div>
           ) : (
-            <div style={{ textAlign: "center", padding: "48px 24px", color: "#94a3b8" }}>
-              <p style={{ fontSize: "16px", marginBottom: "12px" }}>No incoming requests.</p>
-              <p>When another student sends you a request, it will appear here.</p>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "64px 24px",
+                color: "#94a3b8"
+              }}
+            >
+              <div style={{ fontSize: "48px", marginBottom: "16px" }}>📭</div>
+              <p style={{ fontSize: "18px", fontWeight: "500", marginBottom: "8px", color: "#475569" }}>
+                No incoming requests yet.
+              </p>
+              <p style={{ fontSize: "14px", marginBottom: "20px" }}>
+                When another student sends you a request, it will appear here.
+              </p>
             </div>
           )}
         </div>
@@ -357,24 +503,98 @@ export default function Connections() {
             <div className="connections-grid">
               {connectedUsers.map((conversation) => {
                 const otherUser = getOtherUser(conversation);
+                const isOtherUserOnline = onlineUsers.includes(String(otherUser._id));
+                const isTyping = typingUsers[String(otherUser._id)];
                 return (
                   <div
                     key={conversation._id}
                     className="connection-card"
                     onClick={() => handleSelectConnection(conversation)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleSelectConnection(conversation);
+                      }
+                    }}
+                    aria-label={`Chat with ${otherUser.fullName}`}
                   >
-                    <div className="connection-avatar">
-                      {otherUser.fullName.charAt(0).toUpperCase()}
+                    <div className="connection-avatar-wrapper">
+                      <div className="connection-avatar">
+                        {otherUser.fullName.charAt(0).toUpperCase()}
+                      </div>
+                      {isOtherUserOnline && <div className="status-indicator online"></div>}
+                      {!isOtherUserOnline && <div className="status-indicator offline"></div>}
                     </div>
                     <div className="connection-info">
-                      <h3>{otherUser.fullName}</h3>
-                      <p>{otherUser.email}</p>
+                      <div className="connection-header-row">
+                        <h3>{otherUser.fullName}</h3>
+                        {conversation.unreadCount > 0 && (
+                          <span className="unread-badge">{conversation.unreadCount}</span>
+                        )}
+                      </div>
+                      <p className="connection-status">
+                        {isTyping ? (
+                          <span className="typing-text">typing...</span>
+                        ) : isOtherUserOnline ? (
+                          <span className="online-text">Online</span>
+                        ) : (
+                          <span className="offline-text">Last active {formatLastActive(conversation.lastMessage)}</span>
+                        )}
+                      </p>
                       <div className="connection-meta">
                         <span className="chip">{otherUser.branch || "N/A"}</span>
                         <span className="chip">{otherUser.year || "-"}</span>
                       </div>
                     </div>
-                    <button className="btn secondary">Message →</button>
+                    {conversation.lastMessage && (
+                      <div className="connection-last-msg">
+                        <small>
+                          {conversation.lastMessage.sender === userId ? "You: " : ""}
+                          {conversation.lastMessage.text.length > 40
+                            ? conversation.lastMessage.text.substring(0, 40) + "..."
+                            : conversation.lastMessage.text}
+                        </small>
+                        <span className="connection-msg-time">
+                          {new Date(conversation.lastMessage.createdAt).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="connection-menu">
+                      <button
+                        className="connection-menu-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenActionMenu(openActionMenu === conversation._id ? null : conversation._id);
+                        }}
+                        title="More options"
+                      >
+                        ⋯
+                      </button>
+                      {openActionMenu === conversation._id && (
+                        <div className="connection-action-menu">
+                          <button
+                            className="action-item"
+                            onClick={(e) => togglePinConversation(conversation._id, e)}
+                          >
+                            {pinnedConversations.includes(conversation._id) ? "📌 Unpin" : "📍 Pin"}
+                          </button>
+                          <button
+                            className="action-item"
+                            onClick={(e) => toggleMuteConversation(conversation._id, e)}
+                          >
+                            {mutedConversations.includes(conversation._id) ? "🔔 Unmute" : "🔕 Mute"}
+                          </button>
+                          <button
+                            className="action-item delete"
+                            onClick={(e) => deleteConversation(conversation._id, e)}
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -383,22 +603,33 @@ export default function Connections() {
             <div
               style={{
                 textAlign: "center",
-                padding: "48px 24px",
+                padding: "64px 24px",
                 color: "#94a3b8"
               }}
             >
-              <p style={{ fontSize: "16px", marginBottom: "12px" }}>
+              <div style={{ fontSize: "48px", marginBottom: "16px" }}>👥</div>
+              <p style={{ fontSize: "18px", fontWeight: "500", marginBottom: "8px", color: "#475569" }}>
                 No connections yet.
+              </p>
+              <p style={{ fontSize: "14px", marginBottom: "20px" }}>
+                Start connecting with other students to begin chatting!
               </p>
               <a
                 href="#/home/search"
                 style={{
-                  color: "#0ea5e9",
+                  display: "inline-block",
+                  color: "white",
+                  background: "#0ea5e9",
+                  padding: "10px 20px",
+                  borderRadius: "8px",
                   fontWeight: "500",
-                  textDecoration: "underline"
+                  textDecoration: "none",
+                  transition: "0.2s",
                 }}
+                onMouseEnter={(e) => e.target.style.background = "#0284c7"}
+                onMouseLeave={(e) => e.target.style.background = "#0ea5e9"}
               >
-                Find students to connect with →
+                Search & Connect 🔍
               </a>
             </div>
           )}
@@ -451,23 +682,43 @@ export default function Connections() {
                           className={`dm-message ${isSent ? "sent" : "received"} ${msg.pending ? "pending" : ""}`}
                         >
                           <p className="dm-message-text">{msg.text}</p>
-                          <small className="dm-message-time">
-                            {msg.pending ? "Sending..." : new Date(msg.createdAt).toLocaleTimeString()}
-                          </small>
+                          <div className="dm-message-footer">
+                            <small className="dm-message-time">
+                              {msg.pending ? "Sending..." : new Date(msg.createdAt).toLocaleTimeString()}
+                            </small>
+                            {isSent && (
+                              <span className={`read-receipt ${msg.readByReceiver ? "read" : "sent"}`}>
+                                {msg.readByReceiver ? "✓✓" : "✓"}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
+                    {selectedConversation && typingUsers[String(getOtherUser(selectedConversation)._id)] && (
+                      <div className="dm-message received typing-indicator">
+                        <div className="typing-dots">
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                        </div>
+                      </div>
+                    )}
                     <div ref={messagesEndRef} />
                   </div>
                 ) : (
                   <div
                     style={{
                       textAlign: "center",
-                      padding: "48px 24px",
+                      padding: "64px 24px",
                       color: "#94a3b8"
                     }}
                   >
-                    <p>No messages yet. Start the conversation!</p>
+                    <div style={{ fontSize: "48px", marginBottom: "16px" }}>💬</div>
+                    <p style={{ fontSize: "18px", fontWeight: "500", marginBottom: "8px", color: "#475569" }}>
+                      No messages yet.
+                    </p>
+                    <p style={{ fontSize: "14px" }}>Say hello and start the conversation!</p>
                   </div>
                 )}
               </div>
@@ -477,7 +728,7 @@ export default function Connections() {
                   type="text"
                   placeholder="Type a message..."
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={handleTypingInput}
                   onKeyPress={(e) => e.key === "Enter" && sendMessage()}
                   className="input"
                 />
@@ -491,16 +742,20 @@ export default function Connections() {
               </div>
             </>
           ) : (
-            <div className="section-card" style={{ textAlign: "center", padding: "64px 24px" }}>
-              <p style={{ color: "#94a3b8", fontSize: "16px" }}>
-                Select a connection to start messaging
+            <div className="section-card" style={{ textAlign: "center", padding: "80px 24px" }}>
+              <div style={{ fontSize: "56px", marginBottom: "24px" }}>👋</div>
+              <p style={{ fontSize: "20px", fontWeight: "600", marginBottom: "12px", color: "#475569" }}>
+                Ready to chat?
+              </p>
+              <p style={{ fontSize: "14px", color: "#94a3b8", marginBottom: "24px", maxWidth: "400px", marginLeft: "auto", marginRight: "auto" }}>
+                Select a connection from the left or create a new connection to start your conversation.
               </p>
               <button
-                className="btn secondary"
+                className="btn"
                 onClick={() => setActiveTab("connections")}
                 style={{ marginTop: "16px" }}
               >
-                View Connections
+                👥 View Connections
               </button>
             </div>
           )}

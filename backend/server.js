@@ -22,6 +22,9 @@ const io = new Server(server, {
 
 app.set("io", io);
 
+// Track online users and their last active time
+const onlineUsers = new Map(); // userId -> { socketId, lastActive }
+
 app.use(cors());
 app.use(express.json());
 
@@ -54,6 +57,15 @@ io.use((socket, next) => {
 io.on("connection", (socket) => {
  socket.join(socket.user.id);
 
+ // Track user as online
+ onlineUsers.set(socket.user.id, {
+  socketId: socket.id,
+  lastActive: new Date()
+ });
+
+ // Broadcast user is online to all connected clients
+ io.emit("user:online", { userId: socket.user.id });
+
  socket.on("conversation:opened", async ({ otherUserId }) => {
   try {
    const Message = require("./models/Message");
@@ -79,6 +91,19 @@ io.on("connection", (socket) => {
   } catch (err) {
    // ignore socket read failures
   }
+ });
+
+ socket.on("user:typing", ({ otherUserId }) => {
+  io.to(otherUserId).emit("user:typing", { userId: socket.user.id });
+ });
+
+ socket.on("user:stopped-typing", ({ otherUserId }) => {
+  io.to(otherUserId).emit("user:stopped-typing", { userId: socket.user.id });
+ });
+
+ socket.on("disconnect", () => {
+  onlineUsers.delete(socket.user.id);
+  io.emit("user:offline", { userId: socket.user.id });
  });
 });
 
@@ -107,6 +132,11 @@ app.use("/api/message",require("./routes/message"));
 app.use("/api/notice",require("./routes/notice"));
 app.use("/api/chat-request",require("./routes/chatRequest"));
 
+// Endpoint to get list of online users
+app.get("/api/users/online", (req, res) => {
+ const onlineUserIds = Array.from(onlineUsers.keys());
+ res.json({ onlineUsers: onlineUserIds });
+});
 
 app.get("/",(req,res)=>res.send("API running"));
 

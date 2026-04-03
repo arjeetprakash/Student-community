@@ -60,6 +60,12 @@ button {
   background: #fff;
 }
 
+.input:focus {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+  border-color: #0ea5e9;
+}
+
 .btn {
   padding: 12px 16px;
   border-radius: 10px;
@@ -68,6 +74,11 @@ button {
   background: linear-gradient(120deg, #2563eb, #4f46e5);
   color: #fff;
   box-shadow: 0 10px 20px rgba(59, 130, 246, 0.25);
+}
+
+.btn:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
 }
 
 .btn.secondary {
@@ -1313,6 +1324,11 @@ button:active{
     transform: translateY(-2px);
   }
 
+  .connection-card:focus-visible {
+    outline: 2px solid #0ea5e9;
+    outline-offset: 2px;
+  }
+
   .connection-avatar {
     width: 56px;
     height: 56px;
@@ -1351,6 +1367,149 @@ button:active{
   .connection-card .btn {
     flex-shrink: 0;
     white-space: nowrap;
+  }
+
+  .connection-last-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .connection-last-msg small {
+    color: #64748b;
+    font-size: 13px;
+    word-break: break-word;
+  }
+
+  .connection-msg-time {
+    color: #94a3b8;
+    font-size: 11px;
+  }
+
+  .connection-avatar-wrapper {
+    position: relative;
+  }
+
+  .status-indicator {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 3px solid white;
+  }
+
+  .status-indicator.online {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  }
+
+  .status-indicator.offline {
+    background: #94a3b8;
+  }
+
+  .connection-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .connection-header-row h3 {
+    margin: 0;
+    font-size: 16px;
+    flex: 1;
+  }
+
+  .unread-badge {
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .connection-status {
+    margin: 4px 0 0;
+    font-size: 13px;
+  }
+
+  .typing-text {
+    color: #0ea5e9;
+    font-style: italic;
+    font-weight: 500;
+  }
+
+  .online-text {
+    color: #10b981;
+    font-weight: 500;
+  }
+
+  .offline-text {
+    color: #94a3b8;
+  }
+
+  .connection-menu {
+    position: relative;
+  }
+
+  .connection-menu-btn {
+    background: #f1f5f9;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: 0.2s;
+    flex-shrink: 0;
+  }
+
+  .connection-menu-btn:hover {
+    background: #e2e8f0;
+  }
+
+  .connection-action-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+    min-width: 150px;
+    z-index: 10;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  .action-item {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    color: #0f172a;
+    transition: 0.1s;
+  }
+
+  .action-item:hover {
+    background: #f1f5f9;
+  }
+
+  .action-item.delete:hover {
+    background: #fee2e2;
+    color: #dc2626;
   }
 
   .messages-full-view {
@@ -1791,6 +1950,68 @@ button:active{
 
 .dm-message.sent .dm-message-time {
   text-align: right;
+}
+
+.dm-message-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: space-between;
+}
+
+.read-receipt {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.read-receipt.sent {
+  color: #94a3b8;
+}
+
+.read-receipt.read {
+  color: #0ea5e9;
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  background: #e0f2fe;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.typing-dots span {
+  width: 8px;
+  height: 8px;
+  background: #0c4a6e;
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
 }
 
 .dm-empty-main {
