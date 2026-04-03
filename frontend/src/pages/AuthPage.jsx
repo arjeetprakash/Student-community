@@ -118,6 +118,9 @@ export default function AuthPage(){
     localStorage.setItem("role",res.data.role);
 
     localStorage.setItem("email",data.email);
+    if(res.data.userId){
+     localStorage.setItem("userId",res.data.userId);
+    }
 
 
 

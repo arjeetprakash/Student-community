@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const User = require("../models/user");
 const auth = require("../middleware/auth");
 
 /* ===============================
@@ -85,7 +85,8 @@ router.post("/login", async (req, res) => {
       token,
       role: user.role,
       username: user.username,
-      email: user.email
+      email: user.email,
+      userId: user._id
     });
 
   } catch (err) {
@@ -115,6 +116,28 @@ router.get("/me", async (req, res) => {
   } catch (err) {
 
     res.status(401).json("Invalid token");
+
+  }
+
+});
+
+
+/* ===============================
+   GET USERS FOR SEARCH
+================================ */
+router.get("/users", auth, async (req, res) => {
+
+  try {
+
+    const users = await User.find({
+      _id: { $ne: req.user.id }
+    }).select("-password");
+
+    res.json(users);
+
+  } catch (err) {
+
+    res.status(500).json("Error fetching users");
 
   }
 

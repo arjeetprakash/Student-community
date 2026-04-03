@@ -1,4 +1,4 @@
-import LandingPage from "./pages/LandingPage";
+import LandingPage from "./pages/LandingPage.jsx";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -13,7 +13,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-<Route path="/login" element={<AuthPage />} />
+        <Route path="/login" element={<AuthPage />} />
         <Route path="/home/*" element={<App />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/profile" element={<Profile />} />
