@@ -228,7 +228,7 @@ export default function EditProfile(){
     <img
      src={form.profilePhoto}
      alt="preview"
-     width="120"
+    className="profile-preview"
      style={{borderRadius:"14px",border:"1px solid #e2e8f0"}}
     />
    )}

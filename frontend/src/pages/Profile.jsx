@@ -182,7 +182,7 @@ export default function Profile(){
 
    }
 
-   width="100"
+  className="profile-photo"
 
    style={{
 
