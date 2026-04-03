@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { connectChatSocket, disconnectChatSocket } from "../lib/chatSocket";
 
 export default function Connections() {
   const [activeTab, setActiveTab] = useState("requests");
@@ -12,7 +13,10 @@ export default function Connections() {
   const [loading, setLoading] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [toast, setToast] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
+  const messagesEndRef = useRef(null);
+  const selectedConversationRef = useRef(null);
 
   const token = localStorage.getItem("token");
   const userId = localStorage.getItem("userId");
@@ -26,9 +30,99 @@ export default function Connections() {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  useEffect(() => {
+    const socket = connectChatSocket(token);
+
+    if (!socket) {
+      return undefined;
+    }
+
+    const getConversationUserId = (conversation) =>
+      String(conversation.sender._id) === String(userId)
+        ? String(conversation.receiver._id)
+        : String(conversation.sender._id);
+
+    const handleIncomingMessage = (message) => {
+      if (String(message.sender) === String(userId)) {
+        return;
+      }
+
+      const senderId = String(message.sender);
+      const activeConversationUserId = selectedConversationRef.current
+        ? getConversationUserId(selectedConversationRef.current)
+        : null;
+
+      setConnectedUsers((current) =>
+        current.map((conversation) => {
+          if (getConversationUserId(conversation) !== senderId) {
+            return conversation;
+          }
+
+          const isOpenConversation =
+            selectedConversationRef.current &&
+            String(conversation._id) === String(selectedConversationRef.current._id);
+
+          return {
+            ...conversation,
+            unreadCount: isOpenConversation ? 0 : (conversation.unreadCount || 0) + 1
+          };
+        })
+      );
+
+      if (activeConversationUserId === senderId) {
+        setMessages((current) => {
+          if (current.some((item) => item._id === message._id)) {
+            return current;
+          }
+
+          return [...current, message];
+        });
+
+        socket.emit("conversation:opened", { otherUserId: senderId });
+      } else {
+        setUnreadCount((current) => current + 1);
+      }
+    };
+
+    const handleConversationRead = ({ otherUserId, clearedCount = 0 }) => {
+      setConnectedUsers((current) =>
+        current.map((conversation) => {
+          if (getConversationUserId(conversation) !== String(otherUserId)) {
+            return conversation;
+          }
+
+          return { ...conversation, unreadCount: 0 };
+        })
+      );
+
+      if (clearedCount > 0) {
+        setUnreadCount((current) => Math.max(current - clearedCount, 0));
+      }
+    };
+
+    socket.on("message:new", handleIncomingMessage);
+    socket.on("conversation:read", handleConversationRead);
+
+    return () => {
+      socket.off("message:new", handleIncomingMessage);
+      socket.off("conversation:read", handleConversationRead);
+      disconnectChatSocket();
+    };
+  }, [token, userId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  const loadData = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const headers = { Authorization: `Bearer ${token}` };
       const [conversationsRes, requestsRes] = await Promise.all([
         axios.get("http://localhost:5000/api/chat-request/conversations", { headers }),
@@ -37,12 +131,21 @@ export default function Connections() {
 
       setConnectedUsers(conversationsRes.data);
       setPendingRequests(requestsRes.data);
-      setSelectedConversation(null);
-      setMessages([]);
+      setUnreadCount(
+        conversationsRes.data.reduce((sum, conversation) => sum + (conversation.unreadCount || 0), 0)
+      );
+      if (!silent) {
+        setSelectedConversation(null);
+        setMessages([]);
+      }
     } catch (err) {
-      setToast("Error loading requests and connections");
+      if (!silent) {
+        setToast("Error loading requests and connections");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -100,6 +203,11 @@ export default function Connections() {
       setMessages(res.data);
       setSelectedConversation(conversation);
       setActiveTab("messages");
+
+      const socket = connectChatSocket(token);
+      socket?.emit("conversation:opened", {
+        otherUserId
+      });
     } catch (err) {
       setToast("Error loading messages");
     } finally {
@@ -110,6 +218,10 @@ export default function Connections() {
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
+    if (!selectedConversation) {
+      return;
+    }
+
     try {
       const headers = { Authorization: `Bearer ${token}` };
 
@@ -118,17 +230,31 @@ export default function Connections() {
           ? selectedConversation.receiver._id
           : selectedConversation.sender._id;
 
-      await axios.post(
+      const optimisticMessage = {
+        _id: `temp-${Date.now()}`,
+        sender: userId,
+        receiver: otherUserId,
+        text: newMessage,
+        createdAt: new Date().toISOString(),
+        pending: true
+      };
+
+      setMessages((current) => [...current, optimisticMessage]);
+      setNewMessage("");
+
+      const res = await axios.post(
         "http://localhost:5000/api/message/send",
         { receiverId: otherUserId, text: newMessage },
         { headers }
       );
 
-      setNewMessage("");
-      loadMessages(selectedConversation);
+      setMessages((current) =>
+        current.map((item) => (item._id === optimisticMessage._id ? res.data : item))
+      );
       setToast("Message sent!");
-      setTimeout(() => setToast(""), 2000);
     } catch (err) {
+      setMessages((current) => current.filter((item) => !item.pending));
+      setNewMessage("");
       setToast("Error sending message");
     }
   };
@@ -165,7 +291,12 @@ export default function Connections() {
           className={activeTab === "messages" ? "active" : ""}
           onClick={() => setActiveTab("messages")}
         >
-          💬 Messages {selectedConversation && "•"}
+          💬 Messages
+          {unreadCount > 0 && (
+            <span className={`tab-badge ${unreadCount > 0 ? "pulse" : ""}`}>
+              {unreadCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -317,15 +448,16 @@ export default function Connections() {
                       return (
                         <div
                           key={msg._id}
-                          className={`dm-message ${isSent ? "sent" : "received"}`}
+                          className={`dm-message ${isSent ? "sent" : "received"} ${msg.pending ? "pending" : ""}`}
                         >
                           <p className="dm-message-text">{msg.text}</p>
                           <small className="dm-message-time">
-                            {new Date(msg.createdAt).toLocaleTimeString()}
+                            {msg.pending ? "Sending..." : new Date(msg.createdAt).toLocaleTimeString()}
                           </small>
                         </div>
                       );
                     })}
+                    <div ref={messagesEndRef} />
                   </div>
                 ) : (
                   <div

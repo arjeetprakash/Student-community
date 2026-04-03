@@ -1,191 +1,121 @@
 const router = require("express").Router();
 
 const ChatRequest = require("../models/ChatRequest");
+const Message = require("../models/Message");
 
 const auth = require("../middleware/auth");
 
-
-
 /* SEND REQUEST */
+router.post("/send", auth, async (req, res) => {
+   const request = new ChatRequest({
+      sender: req.user.id,
+      receiver: req.body.userId
+   });
 
-router.post("/send",auth,async(req,res)=>{
+   await request.save();
 
- const request = new ChatRequest({
-
-  sender:req.user.id,
-
-  receiver:req.body.userId
-
- });
-
-
-
- await request.save();
-
-
-
- res.json(request);
-
+   res.json(request);
 });
-
-
 
 /* ACCEPT REQUEST */
+router.put("/accept/:id", auth, async (req, res) => {
+   const request = await ChatRequest.findByIdAndUpdate(
+      req.params.id,
+      { status: "accepted" },
+      { new: true }
+   );
 
-router.put("/accept/:id",auth,async(req,res)=>{
-
- const request = await ChatRequest.findByIdAndUpdate(
-
-  req.params.id,
-
-  {status:"accepted"},
-
-  {new:true}
-
- );
-
-
-
- res.json(request);
-
+   res.json(request);
 });
-
-
 
 /* REJECT REQUEST */
-
-router.delete("/reject/:id",auth,async(req,res)=>{
-
- try{
-
-  const request = await ChatRequest.findByIdAndDelete(req.params.id);
-
-  res.json("Request rejected");
-
- }catch(err){
-
-  res.status(500).json("Error rejecting request");
-
- }
-
+router.delete("/reject/:id", auth, async (req, res) => {
+   try {
+      await ChatRequest.findByIdAndDelete(req.params.id);
+      res.json("Request rejected");
+   } catch (err) {
+      res.status(500).json("Error rejecting request");
+   }
 });
-
-
 
 /* GET PENDING REQUESTS (RECEIVER) */
+router.get("/pending", auth, async (req, res) => {
+   try {
+      const requests = await ChatRequest.find({
+         receiver: req.user.id,
+         status: "pending"
+      }).populate("sender", "fullName email branch year");
 
-router.get("/pending",auth,async(req,res)=>{
-
- try{
-
-  const requests = await ChatRequest.find({
-
-   receiver:req.user.id,
-
-   status:"pending"
-
-  }).populate("sender","fullName email branch year");
-
-
-
-  res.json(requests);
-
- }catch(err){
-
-  res.status(500).json("Error fetching requests");
-
- }
-
+      res.json(requests);
+   } catch (err) {
+      res.status(500).json("Error fetching requests");
+   }
 });
-
-
 
 /* GET SENT REQUESTS (SENDER) */
+router.get("/sent", auth, async (req, res) => {
+   try {
+      const requests = await ChatRequest.find({
+         sender: req.user.id,
+         status: "pending"
+      }).populate("receiver", "fullName email branch year");
 
-router.get("/sent",auth,async(req,res)=>{
-
- try{
-
-  const requests = await ChatRequest.find({
-
-   sender:req.user.id,
-
-   status:"pending"
-
-  }).populate("receiver","fullName email branch year");
-
-
-
-  res.json(requests);
-
- }catch(err){
-
-  res.status(500).json("Error fetching sent requests");
-
- }
-
+      res.json(requests);
+   } catch (err) {
+      res.status(500).json("Error fetching sent requests");
+   }
 });
-
-
 
 /* GET ACCEPTED CONVERSATIONS */
+router.get("/conversations", auth, async (req, res) => {
+   try {
+      const conversations = await ChatRequest.find({
+         $or: [
+            { sender: req.user.id, status: "accepted" },
+            { receiver: req.user.id, status: "accepted" }
+         ]
+      })
+         .populate("sender", "fullName email branch year")
+         .populate("receiver", "fullName email branch year");
 
-router.get("/conversations",auth,async(req,res)=>{
+      const withUnreadCounts = await Promise.all(
+         conversations.map(async (conversation) => {
+            const otherUserId =
+               String(conversation.sender._id) === String(req.user.id)
+                  ? conversation.receiver._id
+                  : conversation.sender._id;
 
- try{
+            const unreadCount = await Message.countDocuments({
+               sender: otherUserId,
+               receiver: req.user.id,
+               readByReceiver: false
+            });
 
-  const conversations = await ChatRequest.find({
+            return {
+               ...conversation.toObject(),
+               unreadCount
+            };
+         })
+      );
 
-   $or:[
-
-    {sender:req.user.id,status:"accepted"},
-
-    {receiver:req.user.id,status:"accepted"}
-
-   ]
-
-  }).populate("sender","fullName email branch year").populate("receiver","fullName email branch year");
-
-
-
-  res.json(conversations);
-
- }catch(err){
-
-  res.status(500).json("Error fetching conversations");
-
- }
-
+      res.json(withUnreadCounts);
+   } catch (err) {
+      res.status(500).json("Error fetching conversations");
+   }
 });
-
-
 
 /* GET REQUESTS */
+router.get("/", auth, async (req, res) => {
+   try {
+      const requests = await ChatRequest.find({
+         receiver: req.user.id,
+         status: "pending"
+      }).populate("sender");
 
-router.get("/",auth,async(req,res)=>{
-
- try{
-
-  const requests = await ChatRequest.find({
-
-   receiver:req.user.id,
-
-   status:"pending"
-
-  }).populate("sender");
-
-
-
-  res.json(requests);
-
- }catch(err){
-
-  res.status(500).json("Error fetching requests");
-
- }
-
+      res.json(requests);
+   } catch (err) {
+      res.status(500).json("Error fetching requests");
+   }
 });
-
-
 
 module.exports = router;

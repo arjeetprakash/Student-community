@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/Navbar";
+import { connectChatSocket, disconnectChatSocket } from "../lib/chatSocket";
 
 export default function DirectMessages() {
   const [conversations, setConversations] = useState([]);
@@ -12,6 +13,8 @@ export default function DirectMessages() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [toast, setToast] = useState("");
   const navigate = useNavigate();
+  const messagesEndRef = useRef(null);
+  const selectedConversationRef = useRef(null);
 
   const token = localStorage.getItem("token");
   const userId = localStorage.getItem("userId");
@@ -25,22 +28,83 @@ export default function DirectMessages() {
     loadConversations();
   }, []);
 
-  const loadConversations = async () => {
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  useEffect(() => {
+    const socket = connectChatSocket(token);
+
+    if (!socket) {
+      return undefined;
+    }
+
+    const getOtherUserId = (conversation) =>
+      String(conversation.sender._id) === String(userId)
+        ? String(conversation.receiver._id)
+        : String(conversation.sender._id);
+
+    const handleIncomingMessage = (message) => {
+      if (String(message.sender) === String(userId)) {
+        return;
+      }
+
+      const senderId = String(message.sender);
+      const activeConversationUserId = selectedConversationRef.current
+        ? getOtherUserId(selectedConversationRef.current)
+        : null;
+
+      if (activeConversationUserId === senderId) {
+        setMessages((current) => {
+          if (current.some((item) => item._id === message._id)) {
+            return current;
+          }
+
+          return [...current, message];
+        });
+
+        socket.emit("conversation:opened", { otherUserId: senderId });
+      }
+
+      loadConversations({ silent: true });
+    };
+
+    socket.on("message:new", handleIncomingMessage);
+
+    return () => {
+      socket.off("message:new", handleIncomingMessage);
+      disconnectChatSocket();
+    };
+  }, [token, userId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const loadConversations = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const headers = { Authorization: `Bearer ${token}` };
       const res = await axios.get("http://localhost:5000/api/chat-request/conversations", { headers });
       setConversations(res.data);
     } catch (err) {
-      setToast("Error loading conversations");
+      if (!silent) {
+        setToast("Error loading conversations");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
-  const loadMessages = async (conversation) => {
+  const loadMessages = async (conversation, { silent = false } = {}) => {
     try {
-      setMessagesLoading(true);
+      if (!silent) {
+        setMessagesLoading(true);
+      }
       const headers = { Authorization: `Bearer ${token}` };
 
       const otherUserId =
@@ -55,15 +119,24 @@ export default function DirectMessages() {
 
       setMessages(res.data);
       setSelectedConversation(conversation);
+
+      const socket = connectChatSocket(token);
+      socket?.emit("conversation:opened", { otherUserId });
     } catch (err) {
-      setToast("Error loading messages");
+      if (!silent) {
+        setToast("Error loading messages");
+      }
     } finally {
-      setMessagesLoading(false);
+      if (!silent) {
+        setMessagesLoading(false);
+      }
     }
   };
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
+
+    if (!selectedConversation) return;
 
     try {
       const headers = { Authorization: `Bearer ${token}` };
@@ -73,16 +146,33 @@ export default function DirectMessages() {
           ? selectedConversation.receiver._id
           : selectedConversation.sender._id;
 
-      await axios.post(
+      const optimisticMessage = {
+        _id: `temp-${Date.now()}`,
+        sender: userId,
+        receiver: otherUserId,
+        text: newMessage,
+        createdAt: new Date().toISOString(),
+        pending: true
+      };
+
+      setMessages((current) => [...current, optimisticMessage]);
+      setNewMessage("");
+
+      const res = await axios.post(
         "http://localhost:5000/api/message/send",
         { receiverId: otherUserId, text: newMessage },
         { headers }
       );
 
-      setNewMessage("");
-      loadMessages(selectedConversation);
+      setMessages((current) =>
+        current.some((item) => item._id === res.data._id)
+          ? current.filter((item) => item._id !== optimisticMessage._id)
+          : current.map((item) => (item._id === optimisticMessage._id ? res.data : item))
+      );
       setToast("Message sent!");
     } catch (err) {
+      setMessages((current) => current.filter((item) => !item.pending));
+      setNewMessage("");
       setToast("Error sending message");
     }
   };
@@ -185,16 +275,17 @@ export default function DirectMessages() {
                           <div
                             key={msg._id}
                             className={`dm-message ${
-                              isSent ? "sent" : "received"
+                                isSent ? "sent" : "received"
                             }`}
                           >
                             <p className="dm-message-text">{msg.text}</p>
                             <small className="dm-message-time">
-                              {new Date(msg.createdAt).toLocaleTimeString()}
+                                {msg.pending ? "Sending..." : new Date(msg.createdAt).toLocaleTimeString()}
                             </small>
                           </div>
                         );
                       })}
+                      <div ref={messagesEndRef} />
                     </div>
                   ) : (
                     <div className="dm-empty">

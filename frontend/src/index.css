@@ -1256,6 +1256,39 @@ button:active{
     border-bottom-color: #fef08a;
   }
 
+  .tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    margin-left: 8px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    vertical-align: middle;
+  }
+
+  .tab-badge.pulse {
+    animation: badgePulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes badgePulse {
+    0%,
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35);
+    }
+    50% {
+      transform: scale(1.08);
+      box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    }
+  }
+
   .connections-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -1739,6 +1772,17 @@ button:active{
   color: white;
 }
 
+.dm-message.pending .dm-message-text {
+  background: #dbeafe;
+  color: #1e3a8a;
+  border: 1px dashed #93c5fd;
+}
+
+.dm-message.pending .dm-message-time {
+  color: #3b82f6;
+  font-style: italic;
+}
+
 .dm-message-time {
   color: #94a3b8;
   font-size: 12px;
@@ -1763,6 +1807,15 @@ button:active{
   border-top: 1px solid #e2e8f0;
   display: flex;
   gap: 8px;
+}
+
+.dm-message-input .btn {
+  min-width: 100px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.dm-message-input .btn:not(:disabled):hover {
+  transform: translateY(-1px);
 }
 
 .dm-message-input input {
