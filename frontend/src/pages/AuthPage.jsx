@@ -2,7 +2,13 @@ import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import "../index.css";
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://student-community-j7iy.onrender.com").replace(/\/$/, "");
+
 export default function AuthPage(){
+
+ const goToHash = (path) => {
+  window.location.hash = path.startsWith("/") ? path : `/${path}`;
+ };
 
  const [authMode,setAuthMode] = useState("student");
  const [isLogin,setIsLogin] = useState(true);
@@ -99,7 +105,7 @@ export default function AuthPage(){
 
     const res = await axios.post(
 
-     "http://localhost:5000/api/auth/login",
+     `${API_BASE_URL}/api/auth/login`,
 
      {
 
@@ -136,12 +142,12 @@ export default function AuthPage(){
 
     }
 
-    window.location="/admin";
+    goToHash("/admin");
     return;
 
    }
 
-   window.location="/home";
+  goToHash("/home");
 
    }
 
@@ -158,7 +164,7 @@ export default function AuthPage(){
 
     await axios.post(
 
-     "http://localhost:5000/api/auth/register",
+     `${API_BASE_URL}/api/auth/register`,
 
      data
 
@@ -176,7 +182,11 @@ export default function AuthPage(){
   catch(err){
 
    console.log(err);
-   setError("Something went wrong. Try again.");
+    const backendMessage =
+     typeof err?.response?.data === "string"
+      ? err.response.data
+      : err?.response?.data?.message;
+    setError(backendMessage || "Something went wrong. Try again.");
 
   }
   finally{

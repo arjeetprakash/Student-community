@@ -3,16 +3,29 @@ require("dotenv").config();
 const express=require("express");
 const mongoose=require("mongoose");
 const cors=require("cors");
+const PORT = process.env.PORT || 5000;
+const MONGO_URI = process.env.MONGO_URI;
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const app=express();
 
 app.use(cors());
 app.use(express.json());
 
+if (!MONGO_URI) {
+ console.error("Missing required environment variable: MONGO_URI");
+ process.exit(1);
+}
+
+if (!JWT_SECRET) {
+ console.error("Missing required environment variable: JWT_SECRET");
+ process.exit(1);
+}
+
 
 mongoose.connect(
 
- process.env.MONGO_URI,
+ MONGO_URI,
 
  {
 
@@ -38,8 +51,19 @@ app.use("/api/chat-request",require("./routes/chatRequest"));
 app.get("/",(req,res)=>res.send("API running"));
 
 
-app.listen(5000,()=>{
+app.get("/health", (req, res) => {
+ const dbConnected = mongoose.connection.readyState === 1;
+ res.status(dbConnected ? 200 : 503).json({
+  status: dbConnected ? "ok" : "degraded",
+  dbConnected
+ });
+});
 
- console.log("Server running on port 5000");
 
+mongoose.connection.once("open", () => {
+ app.listen(PORT,()=>{
+
+  console.log(`Server running on port ${PORT}`);
+
+ });
 });

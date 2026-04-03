@@ -13,16 +13,16 @@ export default function App(){
 
   <Routes>
 
-   <Route path="/" element={<Dashboard/>}/>
+   <Route index element={<Dashboard/>}/>
 
-   <Route path="/profile" element={<Profile/>}/>
+   <Route path="profile" element={<Profile/>}/>
 
-   <Route path="/profile/edit" element={<EditProfile/>}/>
+   <Route path="profile/edit" element={<EditProfile/>}/>
 
-   <Route path="/notices" element={<Notices/>}/>
+   <Route path="notices" element={<Notices/>}/>
 
-   <Route path="/search" element={<UserSearch/>}/>
-    <Route path="/connections" element={<Connections/>}/>
+   <Route path="search" element={<UserSearch/>}/>
+    <Route path="connections" element={<Connections/>}/>
 
   </Routes>
 

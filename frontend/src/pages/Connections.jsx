@@ -260,7 +260,7 @@ export default function Connections() {
                 No connections yet.
               </p>
               <a
-                href="/home/search"
+                href="#/home/search"
                 style={{
                   color: "#0ea5e9",
                   fontWeight: "500",

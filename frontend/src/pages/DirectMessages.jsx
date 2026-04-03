@@ -145,7 +145,7 @@ export default function DirectMessages() {
             ) : (
               <div className="dm-empty">
                 <p>No active conversations yet.</p>
-                <a href="/home/connections">Go to Connections & Requests</a>
+                <a href="#/home/connections">Go to Connections & Requests</a>
               </div>
             )}
           </aside>

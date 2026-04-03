@@ -32,12 +32,12 @@ export default function Admin() {
 
   useEffect(() => {
     if (!token) {
-      window.location = "/";
+      window.location.hash = "/";
       return;
     }
 
     if (role !== "admin") {
-      window.location = "/home";
+      window.location.hash = "/home";
       return;
     }
 

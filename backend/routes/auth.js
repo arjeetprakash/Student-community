@@ -1,14 +1,21 @@
 const router = require("express").Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const User = require("../models/user");
 const auth = require("../middleware/auth");
+
+const isDatabaseConnected = () => mongoose.connection.readyState === 1;
 
 /* ===============================
    REGISTER USER
 ================================ */
 router.post("/register", async (req, res) => {
   try {
+    if (!isDatabaseConnected()) {
+      return res.status(503).json("Database not connected");
+    }
+
     const {
       username,
       fullName,
@@ -44,7 +51,7 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json("Registered successfully");
   } catch (err) {
-    console.log(err);
+    console.log("Register error:", err);
     res.status(500).json("Server error");
   }
 });
@@ -55,6 +62,9 @@ router.post("/register", async (req, res) => {
 ================================ */
 router.post("/login", async (req, res) => {
   try {
+    if (!isDatabaseConnected()) {
+      return res.status(503).json("Database not connected");
+    }
 
     const { email, password } = req.body;
 
@@ -91,7 +101,7 @@ router.post("/login", async (req, res) => {
 
   } catch (err) {
 
-    console.log(err);
+    console.log("Login error:", err);
     res.status(500).json("Server error");
 
   }
