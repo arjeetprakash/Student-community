@@ -1,123 +1,223 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+const spaces = {
+  "Study Rooms": ["DSA Sprint", "GATE Prep", "Final Year Projects"],
+  "Campus Clubs": ["Design Circle", "Robotics Hub", "Literary Club"],
+  "Career Desk": ["Resume Reviews", "Mock Interviews", "Referral Board"]
+};
+
+const testimonials = [
+  {
+    quote: "I found my project teammates in one day and we shipped our first hackathon app in a week.",
+    by: "Aditi, CSE 3rd Year"
+  },
+  {
+    quote: "Notices and club updates are finally in one place. I never miss deadlines now.",
+    by: "Rohan, ECE 2nd Year"
+  },
+  {
+    quote: "The career desk threads helped me crack my internship interview prep schedule.",
+    by: "Mehul, IT 4th Year"
+  }
+];
+
+const faqItems = [
+  {
+    q: "Can students from different years join the same space?",
+    a: "Yes. Spaces are open by interest, not by year. You can collaborate across batches."
+  },
+  {
+    q: "How are official notices verified?",
+    a: "Notices posted through admin accounts are marked official and pinned on the notice board."
+  },
+  {
+    q: "Can I create a private community group?",
+    a: "Yes, moderators can create private groups for projects, clubs, and focused study circles."
+  }
+];
+
 export default function LandingPage() {
+  const [activeSpace, setActiveSpace] = useState("Study Rooms");
+  const [activeFaq, setActiveFaq] = useState(0);
+  const [testimonialIndex, setTestimonialIndex] = useState(0);
+  const [email, setEmail] = useState("");
+  const [joined, setJoined] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTestimonialIndex((prev) => (prev + 1) % testimonials.length);
+    }, 3600);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const currentSpaces = useMemo(() => spaces[activeSpace], [activeSpace]);
+
+  const handleJoin = () => {
+    if (!email.trim()) {
+      return;
+    }
+    setJoined(true);
+    setEmail("");
+  };
+
   return (
-    <div style={{minHeight:"100vh",background:"radial-gradient(circle at 10% 20%, #e0f2fe 0, transparent 30%),radial-gradient(circle at 90% 10%, #ede9fe 0, transparent 35%),#0f172a"}}>
+    <div className="landing-root">
+      <div className="landing-aura" />
 
-      {/* NAVBAR */}
-      <nav style={{
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "18px 28px",
-        alignItems:"center",
-        color: "white"
-      }}>
-        <h2 style={{margin:0}}>🎓 StudentHub</h2>
+      <nav className="landing-nav">
+        <h2 className="landing-brand">StudentHub</h2>
 
-        <div style={{display:"flex",gap:"12px",alignItems:"center"}}>
-          <Link to="/login" style={{ padding:"8px 12px", color: "#0f172a", background:"#fff", borderRadius:"10px", fontWeight:700 }}>
-            Student Login
-          </Link>
-
-          <Link to="/login" style={{ padding:"8px 12px", color: "white", border:"1px solid rgba(255,255,255,0.4)", borderRadius:"10px", fontWeight:700 }}>
-            Admin Login
-          </Link>
+        <div className="landing-nav-actions">
+          <a href="#spaces" className="landing-link">Spaces</a>
+          <a href="#events" className="landing-link">Events</a>
+          <a href="#faq" className="landing-link">FAQ</a>
+          <Link to="/login" className="landing-btn light">Student Login</Link>
+          <Link to="/login?mode=admin" className="landing-btn ghost">Admin Login</Link>
         </div>
       </nav>
 
-      {/* HERO SECTION */}
-      <div style={{
-        textAlign: "center",
-        padding: "110px 24px 80px 24px",
-        color: "white"
-      }}>
-        <div style={{maxWidth:"760px",margin:"0 auto"}}>
-          <p style={{letterSpacing:"4px",textTransform:"uppercase",color:"#a5b4fc",fontWeight:700}}>Campus-first community</p>
-          <h1 style={{fontSize:"44px",margin:"10px 0"}}>Connect • Learn • Grow Together</h1>
-          <p style={{color:"#e2e8f0",fontSize:"18px",marginTop:"10px"}}>
-            Join study groups, get campus updates in real time, and build your network with peers and mentors.
-          </p>
+      <header className="landing-hero">
+        <p className="landing-eyebrow">Campus-first digital community</p>
+        <h1>Connect, collaborate, and stay updated in one student network.</h1>
+        <p className="landing-sub">
+          Build study momentum, discover events, and engage with clubs and mentors without hopping between apps.
+        </p>
 
-          <div style={{display:"flex",justifyContent:"center",gap:"14px",marginTop:"30px",flexWrap:"wrap"}}>
-            <Link to="/login">
-              <button style={{
-                padding: "14px 20px",
-                borderRadius: "12px",
-                border: "none",
-                background: "linear-gradient(120deg,#22d3ee,#6366f1)",
-                color: "white",
-                fontWeight: "800",
-                fontSize:"16px",
-                boxShadow:"0 15px 40px rgba(99,102,241,0.35)",
-                cursor:"pointer"
-              }}>
-                Launch Student Space
-              </button>
-            </Link>
-
-            <Link to="/login">
-              <button style={{
-                padding: "14px 20px",
-                borderRadius: "12px",
-                border: "1px solid rgba(255,255,255,0.4)",
-                background: "transparent",
-                color: "white",
-                fontWeight: "700",
-                cursor:"pointer"
-              }}>
-                Explore as Admin
-              </button>
-            </Link>
-          </div>
-
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:"12px",marginTop:"40px"}}>
-            {["Clubs & events","Peer Q&A","Placement prep","Notice board"].map(item=>(
-              <div key={item} style={{
-                background:"rgba(255,255,255,0.08)",
-                border:"1px solid rgba(255,255,255,0.12)",
-                borderRadius:"14px",
-                padding:"14px",
-                color:"#e2e8f0",
-                backdropFilter:"blur(6px)",
-                fontWeight:600
-              }}>
-                {item}
-              </div>
-            ))}
-          </div>
+        <div className="landing-cta-row">
+          <Link to="/login" className="landing-btn primary">Join Student Space</Link>
+          <a href="#events" className="landing-btn outline">See Upcoming Events</a>
         </div>
-      </div>
 
-      {/* FEATURES */}
-      <div style={{
-        background:"#f8fafc",
-        padding:"60px 24px",
-        borderTopLeftRadius:"24px",
-        borderTopRightRadius:"24px",
-        marginTop:"-30px"
-      }}>
-        <div style={{maxWidth:"1100px",margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:"18px"}}>
-          {[{
-            title:"📚 Learn",
-            desc:"Curated resources and peer answers to keep coursework on track."
-          },{
-            title:"🤝 Connect",
-            desc:"Find teammates, mentors, and club mates instantly."
-          },{
-            title:"🚀 Grow",
-            desc:"Stay job-ready with updates, notices, and project ideas."
-          },{
-            title:"🔔 Stay Notified",
-            desc:"Pinned admin notices and instant highlights each visit."
-          }].map(card=>(
-            <div key={card.title} className="section-card" style={{boxShadow:"0 15px 35px rgba(15,23,42,0.08)"}}>
-              <h3 style={{margin:"0 0 6px 0"}}>{card.title}</h3>
-              <p style={{margin:0,color:"#475569"}}>{card.desc}</p>
+        <div className="landing-kpi-grid">
+          <article>
+            <h3>120+</h3>
+            <p>Active study groups</p>
+          </article>
+          <article>
+            <h3>40+</h3>
+            <p>Club communities</p>
+          </article>
+          <article>
+            <h3>98%</h3>
+            <p>Notice reach within 24h</p>
+          </article>
+          <article>
+            <h3>1,500+</h3>
+            <p>Peer discussions weekly</p>
+          </article>
+        </div>
+      </header>
+
+      <section id="spaces" className="landing-section glass">
+        <div className="landing-section-head">
+          <h2>Interactive community spaces</h2>
+          <p>Switch context instantly and jump into discussions that match your goals.</p>
+        </div>
+
+        <div className="landing-tabs">
+          {Object.keys(spaces).map((space) => (
+            <button
+              key={space}
+              className={`landing-tab ${activeSpace === space ? "active" : ""}`}
+              onClick={() => setActiveSpace(space)}
+            >
+              {space}
+            </button>
+          ))}
+        </div>
+
+        <div className="landing-space-grid tab-content">
+          {currentSpaces.map((item) => (
+            <div key={item} className="landing-space-card">
+              <h3>{item}</h3>
+              <p>Live threads, resource sharing, and peer support curated for this space.</p>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
+      <section id="events" className="landing-section">
+        <div className="landing-section-head">
+          <h2>What makes a great campus community</h2>
+          <p>Essential features designed for student engagement, discovery, and coordination.</p>
+        </div>
+
+        <div className="landing-feature-grid">
+          <article className="landing-feature-card">
+            <h3>Event Calendar</h3>
+            <p>Centralized calendar for hackathons, workshops, and placement drives.</p>
+          </article>
+          <article className="landing-feature-card">
+            <h3>Smart Notice Board</h3>
+            <p>Pinned and verified notices with quick filters for department and batch.</p>
+          </article>
+          <article className="landing-feature-card">
+            <h3>Mentor Connect</h3>
+            <p>Directly connect with seniors and alumni for guidance on projects and careers.</p>
+          </article>
+          <article className="landing-feature-card">
+            <h3>Resource Exchange</h3>
+            <p>Share notes, previous papers, and curated links inside topic channels.</p>
+          </article>
+        </div>
+
+        <div className="landing-event-strip">
+          <span>Apr 12: Open Source Meetup</span>
+          <span>Apr 18: Internship AMA</span>
+          <span>Apr 25: Inter-branch Quiz Night</span>
+          <span>May 01: Portfolio Review Camp</span>
+        </div>
+      </section>
+
+      <section className="landing-section split">
+        <article className="landing-testimonial">
+          <h2>Student voices</h2>
+          <p className="quote">"{testimonials[testimonialIndex].quote}"</p>
+          <p className="by">{testimonials[testimonialIndex].by}</p>
+          <div className="dots">
+            {testimonials.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setTestimonialIndex(i)}
+                className={`dot ${testimonialIndex === i ? "active" : ""}`}
+                aria-label={`Show testimonial ${i + 1}`}
+              />
+            ))}
+          </div>
+        </article>
+
+        <article id="faq" className="landing-faq">
+          <h2>Frequently asked questions</h2>
+          {faqItems.map((item, index) => (
+            <button
+              key={item.q}
+              className={`landing-faq-item ${activeFaq === index ? "open" : ""}`}
+              onClick={() => setActiveFaq(activeFaq === index ? -1 : index)}
+            >
+              <span>{item.q}</span>
+              <span>{activeFaq === index ? "-" : "+"}</span>
+              {activeFaq === index && <p>{item.a}</p>}
+            </button>
+          ))}
+        </article>
+      </section>
+
+      <section className="landing-section community-cta">
+        <h2>Get community updates</h2>
+        <p>Receive weekly event highlights, top discussions, and opportunity alerts.</p>
+        <div className="landing-newsletter">
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your college email"
+            type="email"
+          />
+          <button onClick={handleJoin}>Subscribe</button>
+        </div>
+        {joined && <p className="joined-msg">You are on the list. Welcome to the community loop.</p>}
+      </section>
     </div>
   );
 }

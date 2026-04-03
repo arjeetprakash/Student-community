@@ -1,13 +1,15 @@
 import axios from "axios";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../index.css";
 
 export default function AuthPage(){
 
+ const [authMode,setAuthMode] = useState("student");
  const [isLogin,setIsLogin] = useState(true);
  const [showPassword,setShowPassword] = useState(false);
  const [loading,setLoading] = useState(false);
  const [error,setError] = useState("");
+ const [success,setSuccess] = useState("");
 
  const [data,setData] = useState({
 
@@ -29,9 +31,45 @@ export default function AuthPage(){
 
  });
 
+ useEffect(()=>{
+
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mode");
+
+  if(mode === "admin"){
+   setAuthMode("admin");
+   setIsLogin(true);
+  }
+
+ },[]);
+
+ const passwordScore = useMemo(()=>{
+
+  const value = data.password;
+  let score = 0;
+
+  if(value.length >= 8) score += 1;
+  if(/[A-Z]/.test(value)) score += 1;
+  if(/[0-9]/.test(value)) score += 1;
+  if(/[^A-Za-z0-9]/.test(value)) score += 1;
+
+  return score;
+
+ },[data.password]);
+
+ const passwordLabel = useMemo(()=>{
+
+  if(!data.password) return "Enter password";
+  if(passwordScore <= 1) return "Weak";
+  if(passwordScore <= 3) return "Medium";
+  return "Strong";
+
+ },[data.password,passwordScore]);
+
  const handleSubmit = async ()=>{
 
   setError("");
+   setSuccess("");
 
   if(!data.email || !data.password){
 
@@ -83,13 +121,37 @@ export default function AuthPage(){
 
 
 
-    window.location="/home";
+   if(authMode === "admin"){
+
+    if(res.data.role !== "admin"){
+
+     localStorage.removeItem("token");
+     localStorage.removeItem("role");
+     localStorage.removeItem("email");
+     setError("This account is not an admin account.");
+     return;
+
+    }
+
+    window.location="/admin";
+    return;
+
+   }
+
+   window.location="/home";
 
    }
 
 
 
    else{
+
+   if(authMode === "admin"){
+
+    setError("Admin accounts are managed by system setup. Please use login.");
+    return;
+
+   }
 
     await axios.post(
 
@@ -102,6 +164,7 @@ export default function AuthPage(){
 
 
     setIsLogin(true);
+   setSuccess("Account created. You can now log in.");
 
    }
 
@@ -123,29 +186,65 @@ export default function AuthPage(){
 
  return(
 
-  <div className="app-shell" style={{maxWidth:480}}>
+   <div className="auth-page-root">
 
-   <div className="hero">
+    <div className="auth-glow" />
 
-    <h1>
+    <div className="auth-wrap">
 
-     {isLogin ? "Login" : "Create Student Account"}
+      <aside className="auth-info">
 
-    </h1>
-    <p style={{color:"#475569"}}>
-     {isLogin ? "Welcome back!" : "Join the community in minutes."}
-    </p>
-   </div>
+       <p className="auth-kicker">Campus Access Portal</p>
+       <h1>{authMode === "student" ? "Student login and onboarding" : "Admin control access"}</h1>
+       <p>
+         {authMode === "student"
+          ? "Join discussions, follow notices, and collaborate with peers from one place."
+          : "Manage community health, student updates, and official notices securely."}
+       </p>
 
+       <div className="auth-benefits">
+         <article>
+          <h3>{authMode === "student" ? "Peer Network" : "Moderation Tools"}</h3>
+          <p>{authMode === "student" ? "Find study partners and clubs in minutes." : "Filter users, broadcast notices, and monitor activity."}</p>
+         </article>
+         <article>
+          <h3>{authMode === "student" ? "Opportunity Feed" : "Verified Publishing"}</h3>
+          <p>{authMode === "student" ? "Stay updated on events and internships." : "Push trusted announcements with role-based access."}</p>
+         </article>
+       </div>
+      </aside>
 
+      <section className="auth-form-card">
+       <div className="auth-role-tabs">
+         <button
+          type="button"
+          className={authMode === "student" ? "active" : ""}
+          onClick={()=>{setAuthMode("student"); setError(""); setSuccess("");}}
+         >
+          Student
+         </button>
+         <button
+          type="button"
+          className={authMode === "admin" ? "active" : ""}
+          onClick={()=>{setAuthMode("admin"); setIsLogin(true); setError(""); setSuccess("");}}
+         >
+          Admin
+         </button>
+       </div>
 
-   <div className="section-card stack">
+       <div className="auth-title-block">
+         <h2>{isLogin ? `${authMode === "admin" ? "Admin" : "Student"} Login` : "Create Student Account"}</h2>
+         <p>{isLogin ? "Welcome back. Enter credentials to continue." : "Register once and start connecting."}</p>
+       </div>
 
-    {error && <div className="toast" style={{background:"#fef2f2",border:"1px solid #fecdd3",color:"#b91c1c"}}>{error}</div>}
+       <div className="section-card stack auth-inner-card tab-content">
 
-    {!isLogin && (
+         {error && <div className="toast" style={{background:"#fef2f2",border:"1px solid #fecdd3",color:"#b91c1c"}}>{error}</div>}
+         {success && <div className="toast" style={{background:"#ecfeff",border:"1px solid #99f6e4",color:"#0f766e"}}>{success}</div>}
 
-     <>
+         {!isLogin && authMode === "student" && (
+
+          <>
 
   <input
 
@@ -297,9 +396,9 @@ export default function AuthPage(){
 
   </select>
 
-     </>
+      </>
 
-    )}
+         )}
 
 
 
@@ -356,9 +455,18 @@ export default function AuthPage(){
      </button>
     </div>
 
+    {!isLogin && authMode === "student" && (
+     <div className="password-strength-wrap">
+      <div className="password-strength-track">
+       <span className={`password-strength-fill strength-${passwordScore}`} />
+      </div>
+      <p className="field-hint">Password strength: {passwordLabel}</p>
+     </div>
+    )}
 
 
-    {!isLogin && (
+
+    {!isLogin && authMode === "student" && (
 
      <input
 
@@ -390,7 +498,7 @@ export default function AuthPage(){
 
      onClick={handleSubmit}
 
-     disabled={loading}
+  disabled={loading}
 
      type="button"
 
@@ -402,23 +510,26 @@ export default function AuthPage(){
 
 
 
-    <button
+      {authMode === "student" && (
+       <button
 
-     className="btn secondary"
+         className="btn secondary"
 
-     onClick={()=>{setIsLogin(!isLogin); setError("");}}
+         onClick={()=>{setIsLogin(!isLogin); setError(""); setSuccess("");}}
 
-     type="button"
+         type="button"
 
-    >
+       >
 
-     {isLogin ? "New Student?" : "Already have account?"}
+         {isLogin ? "New Student?" : "Already have account?"}
 
-    </button>
+       </button>
+      )}
 
+       </div>
+      </section>
+    </div>
    </div>
-
-  </div>
 
  );
 }
