@@ -1,4 +1,4 @@
-import LandingPage from "./pages/LandingPage.jsx";
+import LandingPage from "./pages/landingpage.jsx";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";

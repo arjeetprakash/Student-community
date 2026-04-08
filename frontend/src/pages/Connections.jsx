@@ -380,6 +380,51 @@ export default function Connections() {
     });
   }, [messages, messageSearch]);
 
+  const effectiveConnections = useMemo(() => {
+    const q = connectionSearch.trim().toLowerCase();
+
+    let working = connectedUsers.filter((conversation) => {
+      const user = getOtherUser(conversation);
+      if (!q) {
+        return true;
+      }
+
+      return (
+        user.fullName?.toLowerCase().includes(q) ||
+        user.email?.toLowerCase().includes(q) ||
+        user.branch?.toLowerCase().includes(q)
+      );
+    });
+
+    working = [...working].sort((a, b) => {
+      const aOther = getOtherUser(a);
+      const bOther = getOtherUser(b);
+      const aPinned = pinnedConversations.includes(a._id);
+      const bPinned = pinnedConversations.includes(b._id);
+      const aOnline = onlineUsers.includes(String(aOther._id));
+      const bOnline = onlineUsers.includes(String(bOther._id));
+      const aUnread = a.unreadCount || 0;
+      const bUnread = b.unreadCount || 0;
+      const aTime = new Date(a.lastMessage?.createdAt || a.updatedAt || 0).getTime();
+      const bTime = new Date(b.lastMessage?.createdAt || b.updatedAt || 0).getTime();
+
+      if (connectionSort === "recent") {
+        return bTime - aTime;
+      }
+      if (connectionSort === "online") {
+        if (aOnline !== bOnline) return aOnline ? -1 : 1;
+        return bTime - aTime;
+      }
+
+      if (aPinned !== bPinned) return aPinned ? -1 : 1;
+      if (aUnread !== bUnread) return bUnread - aUnread;
+      if (aOnline !== bOnline) return aOnline ? -1 : 1;
+      return bTime - aTime;
+    });
+
+    return working;
+  }, [connectedUsers, connectionSearch, connectionSort, pinnedConversations, onlineUsers]);
+
   const inboxConnections = useMemo(() => {
     if (!inboxUnreadOnly) {
       return effectiveConnections;
@@ -472,51 +517,6 @@ export default function Connections() {
       return fullName.includes(q) || email.includes(q) || branch.includes(q);
     });
   }, [pendingRequests, requestSearch]);
-
-  const effectiveConnections = useMemo(() => {
-    const q = connectionSearch.trim().toLowerCase();
-
-    let working = connectedUsers.filter((conversation) => {
-      const user = getOtherUser(conversation);
-      if (!q) {
-        return true;
-      }
-
-      return (
-        user.fullName?.toLowerCase().includes(q) ||
-        user.email?.toLowerCase().includes(q) ||
-        user.branch?.toLowerCase().includes(q)
-      );
-    });
-
-    working = [...working].sort((a, b) => {
-      const aOther = getOtherUser(a);
-      const bOther = getOtherUser(b);
-      const aPinned = pinnedConversations.includes(a._id);
-      const bPinned = pinnedConversations.includes(b._id);
-      const aOnline = onlineUsers.includes(String(aOther._id));
-      const bOnline = onlineUsers.includes(String(bOther._id));
-      const aUnread = a.unreadCount || 0;
-      const bUnread = b.unreadCount || 0;
-      const aTime = new Date(a.lastMessage?.createdAt || a.updatedAt || 0).getTime();
-      const bTime = new Date(b.lastMessage?.createdAt || b.updatedAt || 0).getTime();
-
-      if (connectionSort === "recent") {
-        return bTime - aTime;
-      }
-      if (connectionSort === "online") {
-        if (aOnline !== bOnline) return aOnline ? -1 : 1;
-        return bTime - aTime;
-      }
-
-      if (aPinned !== bPinned) return aPinned ? -1 : 1;
-      if (aUnread !== bUnread) return bUnread - aUnread;
-      if (aOnline !== bOnline) return aOnline ? -1 : 1;
-      return bTime - aTime;
-    });
-
-    return working;
-  }, [connectedUsers, connectionSearch, connectionSort, pinnedConversations, onlineUsers]);
 
   const quickStats = useMemo(() => {
     const onlineConnections = connectedUsers.filter((conversation) => {
