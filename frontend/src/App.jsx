@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
@@ -23,6 +23,7 @@ export default function App(){
 
    <Route path="search" element={<UserSearch/>}/>
     <Route path="connections" element={<Connections/>}/>
+   <Route path="*" element={<Navigate to="/home" replace />}/>
 
   </Routes>
 

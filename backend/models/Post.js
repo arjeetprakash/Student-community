@@ -34,6 +34,14 @@ const PostSchema = new mongoose.Schema({
   type:String
  },
 
+ tags:[
+  {
+   type:String,
+   lowercase:true,
+   trim:true
+  }
+ ],
+
  author:{
   type:String
  },
@@ -72,5 +80,9 @@ const PostSchema = new mongoose.Schema({
 },
 {timestamps:true}
 );
+
+PostSchema.index({ isDeleted: 1, isPinned: -1, createdAt: -1 });
+PostSchema.index({ tags: 1 });
+PostSchema.index({ author: 1 });
 
 module.exports = mongoose.model("Post",PostSchema);

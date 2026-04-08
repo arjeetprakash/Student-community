@@ -3,6 +3,8 @@ import { useEffect,useMemo,useState } from "react";
 import Navbar from "../components/Navbar";
 import Pagination from "../components/Pagination";
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://student-community-j7iy.onrender.com").replace(/\/$/, "");
+
 export default function Notices(){
 
  const [notices,setNotices] = useState([]);
@@ -43,7 +45,7 @@ export default function Notices(){
   setLoading(true);
   axios.get(
 
-   "http://localhost:5000/api/notice"
+    `${API_BASE_URL}/api/notice`
 
   )
   .then(res=>setNotices(res.data))
@@ -198,7 +200,7 @@ export default function Notices(){
 
       <a
 
-       href={`http://localhost:5000/uploads/${n.file}`}
+         href={`${API_BASE_URL}/uploads/${n.file}`}
 
        target="_blank"
 

@@ -12,7 +12,14 @@ const MessageSchema = new mongoose.Schema({
     ref: "User"
   },
 
-  text: String
+  text: String,
+
+  attachment: {
+    filename: String,
+    originalName: String,
+    mimetype: String,
+    size: Number
+  }
 
   ,readByReceiver: {
     type: Boolean,

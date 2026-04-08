@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import NotificationsPanel from "./NotificationsPanel";
 
 export default function Navbar({ role }) {
       const [showMenu, setShowMenu] = useState(false);
@@ -10,40 +11,34 @@ export default function Navbar({ role }) {
       };
 
       return (
-            <nav className="navbar">
-                  <div className="nav-links">
-                        <strong>CampusConnect</strong>
+            <nav className="navbar navbar-premium">
+                  <div className="navbar-brand-block">
+                        <strong className="navbar-brand">CampusConnect</strong>
+                        <small>Student community network</small>
+                  </div>
+
+                  <div className="nav-links nav-links-main">
                         <Link to="/home">Home</Link>
                         <Link to="/home/notices">Notices</Link>
                         <Link to="/home/search">Search</Link>
-                        {role === "student" && <Link to="/home/connections">Connections & Messages</Link>}
+                        {role === "student" && <Link to="/home/connections">Connections</Link>}
+                  </div>
 
-                        <div style={{ position: "relative" }}>
+                  <div className="nav-links nav-links-end">
+                        <NotificationsPanel />
+                        <div className="badge">{role}</div>
+
+                        <div className="profile-menu-wrap">
                               <button
                                     type="button"
                                     onClick={() => setShowMenu((current) => !current)}
-                                    className="btn secondary"
+                                    className="btn secondary profile-menu-btn"
                               >
-                                    Profile ▼
+                                    Profile
                               </button>
 
                               {showMenu && (
-                                    <div
-                                          style={{
-                                                position: "absolute",
-                                                top: "calc(100% + 8px)",
-                                                left: 0,
-                                                background: "#fff",
-                                                borderRadius: "8px",
-                                                padding: "8px",
-                                                boxShadow: "0 5px 15px rgba(0,0,0,0.1)",
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                minWidth: "150px",
-                                                zIndex: 1000,
-                                                gap: "8px",
-                                          }}
-                                    >
+                                    <div className="profile-menu-popover">
                                           <Link to="/home/profile" onClick={() => setShowMenu(false)}>
                                                 View Profile
                                           </Link>
@@ -53,10 +48,7 @@ export default function Navbar({ role }) {
                                     </div>
                               )}
                         </div>
-                  </div>
 
-                  <div className="nav-links">
-                        <div className="badge">{role}</div>
                         <button type="button" className="btn secondary" onClick={logout}>
                               Logout
                         </button>

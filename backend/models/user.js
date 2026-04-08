@@ -15,7 +15,9 @@ const UserSchema = new mongoose.Schema({
  email:{
   type:String,
   required:true,
-  unique:true
+  unique:true,
+  lowercase:true,
+  trim:true
  },
 
  password:{
@@ -35,11 +37,19 @@ const UserSchema = new mongoose.Schema({
   type:String,
   default:"student"
  },
+ savedPosts:[
+  {
+   type:mongoose.Schema.Types.ObjectId,
+   ref:"Post"
+  }
+ ],
  profilePhoto: {
   type: String,
   default: ""
 }
 
 },{timestamps:true});
+
+UserSchema.index({ email: 1 }, { unique: true });
 
 module.exports = mongoose.model("User",UserSchema);

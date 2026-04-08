@@ -65,9 +65,10 @@ export default function LandingPage() {
   return (
     <div className="landing-root">
       <div className="landing-aura" />
+      <div className="landing-aura landing-aura-secondary" />
 
       <nav className="landing-nav">
-        <h2 className="landing-brand">StudentHub</h2>
+        <h2 className="landing-brand">CampusConnect</h2>
 
         <div className="landing-nav-actions">
           <a href="#spaces" className="landing-link">Spaces</a>
@@ -79,21 +80,21 @@ export default function LandingPage() {
       </nav>
 
       <header className="landing-hero">
-        <p className="landing-eyebrow">Campus-first digital community</p>
-        <h1>Connect, collaborate, and stay updated in one student network.</h1>
+        <p className="landing-eyebrow">Built for campus momentum</p>
+        <h1>A premium student network for ideas, events, and real collaboration.</h1>
         <p className="landing-sub">
-          Build study momentum, discover events, and engage with clubs and mentors without hopping between apps.
+          Discover what matters this week, join high-signal discussions, and turn campus energy into outcomes.
         </p>
 
         <div className="landing-cta-row">
-          <Link to="/login" className="landing-btn primary">Join Student Space</Link>
-          <a href="#events" className="landing-btn outline">See Upcoming Events</a>
+          <Link to="/login" className="landing-btn primary">Enter Student Space</Link>
+          <a href="#events" className="landing-btn outline">Explore Campus Events</a>
         </div>
 
         <div className="landing-kpi-grid">
           <article>
             <h3>120+</h3>
-            <p>Active study groups</p>
+            <p>Active learning circles</p>
           </article>
           <article>
             <h3>40+</h3>
@@ -140,8 +141,8 @@ export default function LandingPage() {
 
       <section id="events" className="landing-section">
         <div className="landing-section-head">
-          <h2>What makes a great campus community</h2>
-          <p>Essential features designed for student engagement, discovery, and coordination.</p>
+          <h2>What powers a high-performing community</h2>
+          <p>Purpose-built workflows for collaboration, discovery, and trusted campus communication.</p>
         </div>
 
         <div className="landing-feature-grid">
@@ -173,7 +174,7 @@ export default function LandingPage() {
 
       <section className="landing-section split">
         <article className="landing-testimonial">
-          <h2>Student voices</h2>
+          <h2>Student outcomes</h2>
           <p className="quote">"{testimonials[testimonialIndex].quote}"</p>
           <p className="by">{testimonials[testimonialIndex].by}</p>
           <div className="dots">
@@ -205,8 +206,8 @@ export default function LandingPage() {
       </section>
 
       <section className="landing-section community-cta">
-        <h2>Get community updates</h2>
-        <p>Receive weekly event highlights, top discussions, and opportunity alerts.</p>
+        <h2>Get the weekly campus brief</h2>
+        <p>Receive event highlights, top discussions, and opportunity alerts every week.</p>
         <div className="landing-newsletter">
           <input
             value={email}

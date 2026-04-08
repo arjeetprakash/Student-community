@@ -5,6 +5,9 @@ const express=require("express");
 const mongoose=require("mongoose");
 const cors=require("cors");
 const jwt = require("jsonwebtoken");
+const helmet = require("helmet");
+const compression = require("compression");
+const rateLimit = require("express-rate-limit");
 const { Server } = require("socket.io");
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
@@ -27,6 +30,26 @@ const onlineUsers = new Map(); // userId -> { socketId, lastActive }
 
 app.use(cors());
 app.use(express.json());
+app.use(helmet());
+app.use(compression());
+app.use("/uploads", express.static("uploads"));
+
+const globalLimiter = rateLimit({
+ windowMs: 15 * 60 * 1000,
+ max: 1000,
+ standardHeaders: true,
+ legacyHeaders: false
+});
+
+const authLimiter = rateLimit({
+ windowMs: 15 * 60 * 1000,
+ max: 100,
+ standardHeaders: true,
+ legacyHeaders: false
+});
+
+app.use("/api", globalLimiter);
+app.use("/api/auth", authLimiter);
 
 if (!MONGO_URI) {
  console.error("Missing required environment variable: MONGO_URI");

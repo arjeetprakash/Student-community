@@ -1,13 +1,30 @@
 const router = require("express").Router();
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
 const Message = require("../models/Message");
 const ChatRequest = require("../models/ChatRequest");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, "-")}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 8 * 1024 * 1024
+  }
+});
 
 
 /* ===============================
    SEND MESSAGE
 ================================ */
-router.post("/send", async (req, res) => {
+router.post("/send", upload.single("file"), async (req, res) => {
 
   try {
 
@@ -15,11 +32,25 @@ router.post("/send", async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    const messageText = String(req.body.text || "").trim();
+
+    if (!messageText && !req.file) {
+      return res.status(400).json("Message text or attachment is required");
+    }
+
     const message = new Message({
 
       sender: decoded.id,
       receiver: req.body.receiverId,
-      text: req.body.text,
+      text: messageText,
+      attachment: req.file
+        ? {
+            filename: req.file.filename,
+            originalName: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size
+          }
+        : undefined,
       readByReceiver: false,
       readAt: null
 

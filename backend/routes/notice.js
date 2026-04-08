@@ -70,6 +70,15 @@ router.post(
 
    await notice.save();
 
+    const io = req.app.get("io");
+    io.emit("notification:new", {
+     type: "notice",
+     title: "New notice published",
+     message: notice.text?.slice(0, 120) || "A new notice is available",
+     createdAt: new Date().toISOString(),
+     noticeId: notice._id
+    });
+
 
 
    res.json(notice);

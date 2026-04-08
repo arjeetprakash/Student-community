@@ -27,7 +27,13 @@ router.post("/register", async (req, res) => {
       role
     } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+
+    if (!normalizedEmail || !password || !username || !fullName) {
+      return res.status(400).json("Missing required fields");
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail }).select("_id");
 
     if (existingUser) {
       return res.status(400).json("Email already registered");
@@ -38,7 +44,7 @@ router.post("/register", async (req, res) => {
     const newUser = new User({
       username,
       fullName,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       college,
       branch,
@@ -67,8 +73,13 @@ router.post("/login", async (req, res) => {
     }
 
     const { email, password } = req.body;
+    const normalizedEmail = String(email || "").trim().toLowerCase();
 
-    const user = await User.findOne({ email });
+    if (!normalizedEmail || !password) {
+      return res.status(400).json("Email and password are required");
+    }
+
+    const user = await User.findOne({ email: normalizedEmail }).lean();
 
     if (!user) {
       return res.status(400).json("User not found");
